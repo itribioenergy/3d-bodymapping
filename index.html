@@ -12,7 +12,7 @@
 </head>
 <body><div id="app"><main id="stage">
 <div class="top"><div class="stamp">CONCEPT DESIGN · TRUE-SCALE MASSING</div><h1>菲律賓厭氧沼氣場｜100 噸／日<br>1 公頃基地 · 兩方案 3D 量體比較</h1><p>物件採公尺座標 1:1 建模 · 基地 100 × 100 m · 高度與形狀為概念設計</p>
-<div class="tools"><button id="orbit" class="active">立體視角</button><button id="plan">俯視平面</button><button id="reset">重設視角</button><button id="labels" class="active">顯示標籤</button><button id="zones" class="active">顯示預留區</button><button id="screenshot" title="下載目前視角的透明背景圖片">📷 下載透明 PNG</button></div></div>
+<div class="tools"><button id="orbit" class="active">立體視角</button><button id="plan">俯視平面</button><button id="reset">重設視角</button><button id="labels" class="active">顯示標籤</button><button id="zones" class="active">顯示預留區</button><button id="realistic" class="active">擬真設備</button><button id="screenshot" title="下載目前視角的透明背景圖片">📷 下載透明 PNG</button></div></div>
 <div id="tip"></div><div class="scale">操作：左鍵旋轉 · 滾輪縮放 · 右鍵平移<br>基地範圍 100 × 100 m｜所有主設備以真實公尺尺寸建模</div><div class="bottomkey">N ↑　概念配置，非施工圖</div><div id="error">3D 函式庫載入失敗。請確認網路連線，並透過本機 HTTP 伺服器或 GitHub Pages 開啟。</div>
 </main><aside class="side">
 <h2>厭氧設備形式</h2><div class="mode"><button id="dry" class="active">A · 乾式貨櫃型</button><button id="wet">B · 攪拌槽型</button></div>
@@ -55,23 +55,136 @@ const commonZones=[
 ['沼氣儲存',81,79,32,26,'gas',832],
 ['發電機區',82.5,13,23,16,'gen',368]
 ];
+
+const steel=0xc8d2d4, pipeColor=0x94c2be;
+const beam=(x1,y1,z1,x2,y2,z2,r=0.12,c=pipeColor,parent=equipmentGroup)=>{
+  const a=new THREE.Vector3(x1,y1,z1), b=new THREE.Vector3(x2,y2,z2),dif=b.clone().sub(a);
+  const o=new THREE.Mesh(new THREE.CylinderGeometry(r,r,dif.length(),8),mat(c));o.position.copy(a.add(b).multiplyScalar(.5));o.quaternion.setFromUnitVectors(new THREE.Vector3(0,1,0),dif.normalize());parent.add(o);return o;
+};
+const torus=(x,y,z,r,c,thickness=.08)=>{
+  const o=new THREE.Mesh(new THREE.TorusGeometry(r,thickness,6,64),mat(c));o.rotation.x=Math.PI/2;o.position.set(x,y,z);equipmentGroup.add(o);return o;
+};
+const slab=(x,z,w,d)=>box(equipmentGroup,x,z,w,d,.18,0x8b989c,0);
+function corrugated(x,z,w,d,h,c){
+  box(equipmentGroup,x,z,w,d,h,c);
+  const n=Math.max(3,Math.floor(d/.48));
+  for(let i=0;i<=n;i++){const zz=z-d/2+i*d/n;box(equipmentGroup,x-w/2-.035,zz,.06,.07,h*.92,0x84949b,.12);box(equipmentGroup,x+w/2+.035,zz,.06,.07,h*.92,0x84949b,.12);}
+  for(let k=0;k<=Math.floor(w/.48);k++){const xx=x-w/2+k*w/Math.max(1,Math.floor(w/.48));box(equipmentGroup,xx,z-d/2-.03,.07,.06,h*.9,0x899ba1,.14);}
+  box(equipmentGroup,x,z,w+.06,d+.06,.1,0x9bafb6,h-.1);
+}
+function container(x,z,c,doorsAtFront=true,kind='digester'){
+  const w=2.438,d=12.192,h=2.896;
+  corrugated(x,z,w,d,h,c);
+  const front=z-(doorsAtFront?d/2:-d/2),sign=doorsAtFront?-1:1;
+  box(equipmentGroup,x,front+sign*.035,w-.18,.07,h-.32,0x364a50,.16);
+  beam(x,.26,front+sign*.09,x,h-.23,front+sign*.09,.035,0xb8ced1);
+  for(const side of [-1,1]){
+    const xx=x+side*(w/2-.15);beam(xx,.27,front+sign*.11,xx,h-.22,front+sign*.11,.024,0xdce5e4);
+    box(equipmentGroup,x+side*.68,front+sign*.1,.07,.055,.75,0xc4d5d5,.8);
+  }
+  if(kind==='generator'){
+    for(let j=0;j<4;j++)box(equipmentGroup,x-w/2-.055,z-3+j*1.1,.09,.64,1.15,0x303e45,.9);
+    beam(x+.55,h,z+2,x+.55,h+1.4,z+2,.19,0x9fabb1);
+    cylinder(equipmentGroup,x+.55,z+2,.3,.35,0xa2aaab).position.y=h+1.6;
+  }else{
+    beam(x,h+.06,z+3,x,h+.06,z-2,.07,0x99d1c4);
+    beam(x,h+.1,z-2,x,h+1.05,z-2,.09,0x9ac9bd);
+  }
+}
+function tank(x,z,r,h,c,labelText){
+  slab(x,z,r*2+1.4,r*2+1.4);
+  cylinder(equipmentGroup,x,z,r,h,c);
+  for(let i=0;i<16;i++){let theta=2*Math.PI*i/16;let px=x+r*Math.cos(theta),pz=z+r*Math.sin(theta);beam(px,.4,pz,px,h-.35,pz,.035,0x6f8776)}
+  for(let y=1.2;y<h;y+=2.4)torus(x,y,z,r+.03,0x8ea498,.065);
+  const roof=new THREE.Mesh(new THREE.CylinderGeometry(r*.12,r,1.05,48),mat(0x61796e));roof.position.set(x,h+.5,z);equipmentGroup.add(roof);
+  torus(x,h,z,r+.18,0xe1e7de,.075);
+  for(let i=0;i<20;i++){let a=i*Math.PI*2/20;beam(x+(r+.18)*Math.cos(a),h,z+(r+.18)*Math.sin(a),x+(r+.18)*Math.cos(a),h+1.05,z+(r+.18)*Math.sin(a),.045,0xc0cdcb)}
+  torus(x,h+1.05,z,r+.18,0xc0cdcb,.05);
+  cylinder(equipmentGroup,x,z,.55,1.2,0x283a40).position.y=h+1.55;
+  // External caged vertical access ladder.
+  const lx=x+r+.5;beam(lx,.3,z-.42,lx,h,z-.42,.045,0xc4cdd1);
+  beam(lx,.3,z+.42,lx,h,z+.42,.045,0xc4cdd1);
+  for(let yy=.5;yy<h;yy+=.45)beam(lx,yy,z-.42,lx,yy,z+.42,.029,0xc4cdd1);
+  label(labelText,x,z,h+3.1);
+}
+function shed(x,z,w,d,h,c){
+ slab(x,z,w+.5,d+.5);
+ for(const xx of [x-w/2+.5,x+w/2-.5])for(const zz of [z-d/2+.5,z+d/2-.5])beam(xx,0,zz,xx,h,zz,.17,0x6c8690);
+ const roof=box(equipmentGroup,x,z,w+.8,d+.8,.22,c,h);
+ box(equipmentGroup,x,z,w+.1,d+.1,.09,0xbac8cf,h+.12);
+ return roof;
+}
+function gasHolder(x,z){
+  // Approximate dome geometry; diameter is conceptual because real usable capacity depends on gas-holder specifications.
+  const r=6.5;
+  slab(x,z,2*r+.8,2*r+.8);
+  cylinder(equipmentGroup,x,z,r,.6,0x858e91);
+  const sph=new THREE.Mesh(new THREE.SphereGeometry(r,40,24,0,Math.PI*2,0,Math.PI/2),new THREE.MeshPhysicalMaterial({color:0xe7f4f1,roughness:.72,metalness:0,side:THREE.DoubleSide}));
+  sph.position.set(x,.6,z);equipmentGroup.add(sph);
+  torus(x,.65,z,r,0xbecfce,.18);
+  for(let i=0;i<12;i++){const a=2*Math.PI*i/12;const px=x+r*Math.cos(a),pz=z+r*Math.sin(a);beam(px,.65,pz,px,1.05,pz,.045,0xa8bebc);}
+  box(equipmentGroup,x+r+1,z,1,1,1.35,0x84989b);
+  beam(x+r+1,1,z,x+r,2,z,.11,0x9fbdc0);
+}
 const makeCommon=()=>{
-commonZones.forEach(a=>zone(a[0],a[1],a[2],a[3],a[4],colors[a[5]]));
-box(equipmentGroup,14,12,11,8,6.5,0xf0ab5e);box(equipmentGroup,26,12,8,5,5,0xcf874a);label('破碎 · 混拌',20,14,9);
-box(equipmentGroup,45,12,9,10,5,0xd7b982);box(equipmentGroup,54,12,8,9,4,0xc9a86c);label('沼渣／沼液暫存',49,13,7);
-cylinder(equipmentGroup,72,35,4.3,7,0x8dbe92);cylinder(equipmentGroup,84,35,4.3,7,0x7bab81);box(equipmentGroup,90,41,6,7,4,0x659b71);label('沼渣沼液處理',79,39,10);
-cylinder(equipmentGroup,75,57,2.2,7,0xa9a0f2);cylinder(equipmentGroup,83,57,2.2,7,0x8f83d5);label('脫硫區',79,60,9);
-box(equipmentGroup,82.5,13,12.192,2.438,2.896,0xf3c66a);label('550 kW 發電機',82.5,13,5);
-const gasr=Math.cbrt(3*(1800000/365/24*4)/(4*Math.PI));sphere(equipmentGroup,73,78,gasr,0x66d3da);sphere(equipmentGroup,89,78,gasr,0x4ab5c8);
-label('脫硫前 822 m³',73,78,13.1);label('脫硫後 822 m³',89,78,13.1);
-box(zoneGroup,50,25.6,90,5.5,.03,colors.road,0.02);box(zoneGroup,62.5,63,5.5,73,.03,colors.road,0.02);
-label('車輛出入口',50,2,2);};
-const dryRows=[35,52,69,86];const addDry=()=>{zone('乾式反應器預留',32.5,63,53,72,colors.dry);for(let j=0;j<4;j++)for(let i=0;i<10;i++){let x=8.6+i*3.25,z=dryRows[j];box(equipmentGroup,x,z,2.438,12.192,2.896, j%2===0?0x2ba991:0x279785);box(equipmentGroup,x,z-6.13,2.438,.12,2.55,0x195d58)}label('40 × 40呎貨櫃（4 排 × 10）',27,43,6);cylinder(equipmentGroup,52,83,4,7,colors.liquid);label('沼液緩衝槽 Ø8m（暫估）',52,83,9);};
-const addWet=()=>{zone('攪拌槽與維修預留',32.5,63,53,72,colors.wet);[[18,46],[37,46],[27.5,69]].forEach((a,i)=>{let t=cylinder(equipmentGroup,a[0],a[1],5,13.5,0x43aadd);let edge=new THREE.LineSegments(new THREE.EdgesGeometry(new THREE.CylinderGeometry(5,5,13.5,32)),new THREE.LineBasicMaterial({color:0xb9eaff,transparent:true,opacity:.55}));edge.position.copy(t.position);equipmentGroup.add(edge);cylinder(equipmentGroup,a[0],a[1],.6,2.2,0xc9e3e5).position.y=14.6;label('攪拌槽 '+(i+1)+' Ø10 × H13.5m',a[0],a[1],17.5)});};
+ commonZones.forEach(a=>zone(a[0],a[1],a[2],a[3],a[4],colors[a[5]]));
+ // Pre-treatment canopy, receiving hopper, shredding line and mixer.
+ shed(20,13,25,13,7.1,0x728d91);
+ box(equipmentGroup,14,13,5,5,2.3,0x6d888d);
+ const hopper=new THREE.Mesh(new THREE.CylinderGeometry(2.9,1.4,2.2,4),mat(0xd2a66b));
+ hopper.rotation.y=Math.PI/4;hopper.position.set(14,3.4,13);equipmentGroup.add(hopper);
+ box(equipmentGroup,21,13,5,2,2,0x477b83,1.5);
+ cylinder(equipmentGroup,27,13,1.7,3.4,0x809d99);
+ beam(16,2.5,13,21,3,13,.33,0x6c7980);
+ label('卸料 · 破碎 · 混拌',20,13,10);
+ // Digestate handling: separate solid storage canopy and adjacent liquid tank.
+ shed(45,13,10,12,5.2,0x80979a);
+ for(let i=0;i<3;i++)box(equipmentGroup,42+i*2.6,13,2.3,7,1.05,0x9d9374);
+ cylinder(equipmentGroup,55,13,3.1,4.5,0x788b80);torus(55,4.5,13,3.12,0xc5d4d1);
+ label('沼渣堆置／沼液暫存',49,13,7.3);
+ // Dewatering: tanks, screw press and conveyor.
+ shed(79.5,37,25,17,8.2,0x81999e);
+ cylinder(equipmentGroup,71.8,37,3,6,0x748e7c);
+ cylinder(equipmentGroup,82,37,2.8,5.5,0x7b9f8b);
+ box(equipmentGroup,88.2,36,6,1.8,2.3,0xc2ced0,2.1);
+ for(let i=0;i<4;i++)beam(85.5+i*1.6,2,37,85.5+i*1.6,3.5,37,.07,0x8c9b9f);
+ label('固液分離／沼渣沼液處理',79,38,11);
+ // Gas desulfurization absorber columns and piping.
+ slab(79,58,17,11);
+ for(let i=0;i<2;i++){const xx=74+i*9; cylinder(equipmentGroup,xx,57.5,1.9,8.5,0xa8afb8);torus(xx,8.6,57.5,1.98,0xd5dddd);cylinder(equipmentGroup,xx,57.5,.85,.9,0x7b9099).position.y=9;}
+ beam(74,9,57.5,83,9,57.5,.2,0x85bdb0);
+ box(equipmentGroup,79,62,4,1.4,2.1,0x71898d);
+ label('沼氣脫硫／控制盤',79,59,12);
+ // Generator (standard HC 40ft assumed) and electrical equipment.
+ container(82.5,13,0x526f72,true,'generator');
+ box(equipmentGroup,91.5,13,3,2.7,2.8,0x8d9da0);
+ label('550 kW 貨櫃發電機',82.5,14,6);
+ // Two independent double-membrane gas holders.
+ gasHolder(73,78);gasHolder(89,78);
+ label('脫硫前儲氣',73,78,9.1);label('脫硫後儲氣',89,78,9.1);
+ beam(73,.9,71,73,2.1,68,.16,0x92bbbc);
+ beam(89,.9,71,89,2.1,68,.16,0x92bbbc);
+ // Service roads inside the campus.
+ box(zoneGroup,50,25.6,90,5.5,.03,colors.road,.02);box(zoneGroup,62.5,63,5.5,73,.03,colors.road,.02);
+ label('車輛出入口',50,2,2);
+};
+const dryRows=[35,52,69,86];
+const addDry=()=>{
+ zone('乾式反應器預留',32.5,63,53,72,colors.dry);
+ for(let j=0;j<4;j++)for(let i=0;i<10;i++){const x=8.6+i*3.25,z=dryRows[j];container(x,z,0x798b91,true,'digester');}
+ label('乾式厭氧：40 × 40呎貨櫃',27,43,6);
+ tank(52,83,4,7,0x7d9f97,'沼液緩衝槽 Ø8 m（暫估）');
+};
+const addWet=()=>{
+ zone('攪拌槽與維修預留',32.5,63,53,72,colors.wet);
+ [[18,46],[37,46],[27.5,69]].forEach((p,i)=>tank(p[0],p[1],5,13.5,0x315e48,'攪拌型厭氧槽 '+(i+1)+' Ø10 × H13.5 m'));
+ beam(18,2,59,37,2,59,.24,0x86aaa0);
+ beam(18,2,59,27.5,2,59,.24,0x86aaa0);
+};
 const areas=(mode)=>{let items=commonZones.map(a=>[a[0],a[6]]);items.unshift([mode==='dry'?'乾式反應器與作業區':'攪拌槽與維修區',3816]);let used=items.reduce((s,r)=>s+r[1],0);items.push(['其餘道路/退縮/保留（未淨分配）',10000-used]);return items;};
 const legendItems=[['dry','乾式反應器'],['wet','攪拌槽'],['pretreat','前處理'],['storage','沼渣沼液暫存'],['process','沼渣沼液處理'],['gas','沼氣袋'],['desulf','脫硫'],['gen','發電機'],['liquid','沼液槽'],['road','主要車道（示意）']];
 document.getElementById('legend').innerHTML=legendItems.map(a=>'<span class="sw" style="background:'+hex(colors[a[0]])+'"></span><span>'+a[1]+'</span>').join('');
-let mode='dry',labelsVisible=true,zonesVisible=true;
+let mode='dry',labelsVisible=true,zonesVisible=true,realistic=true;
 function update(next){mode=next;while(dynamic.children.length){dynamic.remove(dynamic.children[0])}zoneGroup.clear();equipmentGroup.clear();labelsGroup.clear();dynamic.add(zoneGroup,equipmentGroup,labelsGroup);makeCommon();if(mode==='dry')addDry();else addWet();labelsGroup.visible=labelsVisible;zoneGroup.visible=zonesVisible;
 document.getElementById('dry').classList.toggle('active',mode==='dry');document.getElementById('wet').classList.toggle('active',mode==='wet');
 document.getElementById('m1title').textContent=mode==='dry'?'40 呎貨櫃':'攪拌槽';document.getElementById('m1').textContent=mode==='dry'?'40':'3';document.getElementById('m1unit').textContent=' 座';
@@ -88,6 +201,7 @@ document.getElementById('plan').onclick=()=>{camera.position.set(50.01,180,50);c
 document.getElementById('orbit').onclick=()=>{home();document.getElementById('orbit').classList.add('active');document.getElementById('plan').classList.remove('active')};
 document.getElementById('labels').onclick=()=>{labelsVisible=!labelsVisible;labelsGroup.visible=labelsVisible;document.getElementById('labels').classList.toggle('active',labelsVisible)};
 document.getElementById('zones').onclick=()=>{zonesVisible=!zonesVisible;zoneGroup.visible=zonesVisible;document.getElementById('zones').classList.toggle('active',zonesVisible)};
+document.getElementById('realistic').onclick=()=>{realistic=!realistic;equipmentGroup.traverse(o=>{if(o.isMesh && o.geometry && o.geometry.type!=='BoxGeometry' && o.geometry.type!=='CylinderGeometry')o.visible=realistic});document.getElementById('realistic').classList.toggle('active',realistic)};
 document.getElementById('screenshot').onclick=()=>{
  const btn=document.getElementById('screenshot');const oldText=btn.textContent;
  btn.disabled=true;btn.textContent='正在產生 PNG…';
