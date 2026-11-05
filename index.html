@@ -12,7 +12,7 @@
 </head>
 <body><div id="app"><main id="stage">
 <div class="top"><div class="stamp">CONCEPT DESIGN · TRUE-SCALE MASSING</div><h1>菲律賓厭氧沼氣場｜100 噸／日<br>1 公頃基地 · 兩方案 3D 量體比較</h1><p>物件採公尺座標 1:1 建模 · 基地 100 × 100 m · 高度與形狀為概念設計</p>
-<div class="tools"><button id="orbit" class="active">立體視角</button><button id="plan">俯視平面</button><button id="reset">重設視角</button><button id="labels" class="active">顯示標籤</button><button id="zones" class="active">顯示預留區</button><button id="realistic" class="active">擬真設備</button><button id="screenshot" title="下載目前視角的透明背景圖片">📷 下載透明 PNG</button></div></div>
+<div class="tools"><button id="orbit" class="active">立體視角</button><button id="plan">俯視平面</button><button id="reset">重設視角</button><button id="labels" class="active">顯示標籤</button><button id="zones" class="active">顯示預留區</button><button id="screenshot" title="下載目前視角的透明背景圖片">📷 下載透明 PNG</button></div></div>
 <div id="tip"></div><div class="scale">操作：左鍵旋轉 · 滾輪縮放 · 右鍵平移<br>基地範圍 100 × 100 m｜所有主設備以真實公尺尺寸建模</div><div class="bottomkey">N ↑　概念配置，非施工圖</div><div id="error">3D 函式庫載入失敗。請確認網路連線，並透過本機 HTTP 伺服器或 GitHub Pages 開啟。</div>
 </main><aside class="side">
 <h2>厭氧設備形式</h2><div class="mode"><button id="dry" class="active">A · 乾式貨櫃型</button><button id="wet">B · 攪拌槽型</button></div>
@@ -184,7 +184,7 @@ const addWet=()=>{
 const areas=(mode)=>{let items=commonZones.map(a=>[a[0],a[6]]);items.unshift([mode==='dry'?'乾式反應器與作業區':'攪拌槽與維修區',3816]);let used=items.reduce((s,r)=>s+r[1],0);items.push(['其餘道路/退縮/保留（未淨分配）',10000-used]);return items;};
 const legendItems=[['dry','乾式反應器'],['wet','攪拌槽'],['pretreat','前處理'],['storage','沼渣沼液暫存'],['process','沼渣沼液處理'],['gas','沼氣袋'],['desulf','脫硫'],['gen','發電機'],['liquid','沼液槽'],['road','主要車道（示意）']];
 document.getElementById('legend').innerHTML=legendItems.map(a=>'<span class="sw" style="background:'+hex(colors[a[0]])+'"></span><span>'+a[1]+'</span>').join('');
-let mode='dry',labelsVisible=true,zonesVisible=true,realistic=true;
+let mode='dry',labelsVisible=true,zonesVisible=true;
 function update(next){mode=next;while(dynamic.children.length){dynamic.remove(dynamic.children[0])}zoneGroup.clear();equipmentGroup.clear();labelsGroup.clear();dynamic.add(zoneGroup,equipmentGroup,labelsGroup);makeCommon();if(mode==='dry')addDry();else addWet();labelsGroup.visible=labelsVisible;zoneGroup.visible=zonesVisible;
 document.getElementById('dry').classList.toggle('active',mode==='dry');document.getElementById('wet').classList.toggle('active',mode==='wet');
 document.getElementById('m1title').textContent=mode==='dry'?'40 呎貨櫃':'攪拌槽';document.getElementById('m1').textContent=mode==='dry'?'40':'3';document.getElementById('m1unit').textContent=' 座';
@@ -201,7 +201,7 @@ document.getElementById('plan').onclick=()=>{camera.position.set(50.01,180,50);c
 document.getElementById('orbit').onclick=()=>{home();document.getElementById('orbit').classList.add('active');document.getElementById('plan').classList.remove('active')};
 document.getElementById('labels').onclick=()=>{labelsVisible=!labelsVisible;labelsGroup.visible=labelsVisible;document.getElementById('labels').classList.toggle('active',labelsVisible)};
 document.getElementById('zones').onclick=()=>{zonesVisible=!zonesVisible;zoneGroup.visible=zonesVisible;document.getElementById('zones').classList.toggle('active',zonesVisible)};
-document.getElementById('realistic').onclick=()=>{realistic=!realistic;equipmentGroup.traverse(o=>{if(o.isMesh && o.geometry && o.geometry.type!=='BoxGeometry' && o.geometry.type!=='CylinderGeometry')o.visible=realistic});document.getElementById('realistic').classList.toggle('active',realistic)};
+
 document.getElementById('screenshot').onclick=()=>{
  const btn=document.getElementById('screenshot');const oldText=btn.textContent;
  btn.disabled=true;btn.textContent='正在產生 PNG…';
