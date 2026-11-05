@@ -1,0 +1,93 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>菲律賓 100 噸/日厭氧沼氣場｜1:1 量體配置比較</title>
+<style>
+:root{font-family:Inter,"Noto Sans TC","Microsoft JhengHei",system-ui,sans-serif;color:#e8f3f5;background:#081621}
+*{box-sizing:border-box}body{margin:0}button{font:inherit;cursor:pointer}#app{display:grid;grid-template-columns:minmax(0,1fr) 350px;height:100vh;min-height:650px}#stage{position:relative;overflow:hidden;background:radial-gradient(circle at 45% 35%,#173442,#07131c 75%)}canvas{display:block}.top{position:absolute;top:22px;left:24px;right:22px;pointer-events:none}.top h1{font-size:22px;line-height:1.32;margin:0 0 8px}.top p{margin:0;font-size:12px;color:#b2c8d0}.stamp{display:inline-block;background:#1b3942;border:1px solid #397c83;border-radius:20px;color:#91e5cc;font-size:10px;letter-spacing:1.3px;padding:6px 11px;margin-bottom:11px}.tools{pointer-events:auto;display:flex;gap:8px;flex-wrap:wrap;margin-top:20px}.tools button,.mode button{background:#142d39;color:#d9f4f4;border:1px solid #355566;border-radius:8px;padding:9px 12px;font-size:12px}.tools button:hover,.mode button:hover{background:#235369}.tools button.active,.mode button.active{background:#0b745e;border-color:#35c7a1;color:white}.scale{position:absolute;bottom:18px;left:24px;font-size:11px;color:#b7cbd2;background:#0c2229c9;padding:9px 12px;border-radius:8px}.side{background:#0d202c;border-left:1px solid #294653;padding:23px 20px;overflow:auto}.side h2{font-size:16px;margin:0 0 12px}.side h3{font-size:13px;margin:21px 0 9px;color:#c2e9e8}.mode{display:flex;gap:7px}.mode button{flex:1}.metricgrid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:16px 0}.metric{border:1px solid #294956;background:#112c37;padding:12px;border-radius:9px}.metric span{display:block;font-size:10px;color:#aac1ca;margin-bottom:7px}.metric b{font-size:19px}.metric small{font-size:10px;color:#acc7ca}p.note{font-size:11px;line-height:1.7;color:#a8bdc8;margin:9px 0}.legend{display:grid;grid-template-columns:13px 1fr;gap:9px 8px;font-size:11px;line-height:1.45;color:#d0e0e4}.sw{width:12px;height:12px;border-radius:3px;margin-top:2px}table{width:100%;border-collapse:collapse;font-size:11px}td,th{padding:8px 5px;border-bottom:1px solid #284454;text-align:right}td:first-child,th:first-child{text-align:left}th{color:#8eafb9;font-weight:500}.foot{margin-top:19px;border-top:1px solid #294452;padding-top:13px;font-size:10px;color:#91adb9;line-height:1.65}#tip{position:absolute;bottom:70px;left:24px;max-width:365px;font-size:11px;background:#0b202ce9;color:#dceced;padding:10px 13px;border:1px solid #355563;border-radius:8px;display:none}#error{position:absolute;top:48%;left:10%;right:10%;text-align:center;color:#ffe3cf;display:none}.label{font:600 11px/1.2 system-ui,sans-serif;color:#fff;text-shadow:0 1px 5px #09212a;background:#0b2a36b8;border:1px solid #6895a566;padding:4px 7px;border-radius:5px;white-space:nowrap;pointer-events:none}.bottomkey{position:absolute;right:18px;bottom:18px;font-size:10px;color:#8ba9b4}
+@media(max-width:920px){#app{grid-template-columns:1fr;height:auto}#stage{height:65vh;min-height:470px}.side{height:auto}.top{left:15px;top:14px}.top h1{font-size:17px}.tools{margin-top:11px}.tools button{padding:7px 9px}}
+</style>
+<script type="importmap">{"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.169.0/build/three.module.js","three/addons/":"https://cdn.jsdelivr.net/npm/three@0.169.0/examples/jsm/"}}</script>
+</head>
+<body><div id="app"><main id="stage">
+<div class="top"><div class="stamp">CONCEPT DESIGN · TRUE-SCALE MASSING</div><h1>菲律賓厭氧沼氣場｜100 噸／日<br>1 公頃基地 · 兩方案 3D 量體比較</h1><p>物件採公尺座標 1:1 建模 · 基地 100 × 100 m · 高度與形狀為概念設計</p>
+<div class="tools"><button id="orbit" class="active">立體視角</button><button id="plan">俯視平面</button><button id="reset">重設視角</button><button id="labels" class="active">顯示標籤</button><button id="zones" class="active">顯示預留區</button></div></div>
+<div id="tip"></div><div class="scale">操作：左鍵旋轉 · 滾輪縮放 · 右鍵平移<br>基地範圍 100 × 100 m｜所有主設備以真實公尺尺寸建模</div><div class="bottomkey">N ↑　概念配置，非施工圖</div><div id="error">3D 函式庫載入失敗。請確認網路連線，並透過本機 HTTP 伺服器或 GitHub Pages 開啟。</div>
+</main><aside class="side">
+<h2>厭氧設備形式</h2><div class="mode"><button id="dry" class="active">A · 乾式貨櫃型</button><button id="wet">B · 攪拌槽型</button></div>
+<div class="metricgrid"><div class="metric"><span>基地總面積</span><b>10,000</b><small> m²</small></div><div class="metric"><span>設計處理量</span><b>100</b><small> 噸/日</small></div><div class="metric"><span id="m1title">貨櫃反應器</span><b id="m1">40</b><small id="m1unit"> 座</small></div><div class="metric"><span id="m2title">主反應器最大高度</span><b id="m2">2.90</b><small> m</small></div></div>
+<p id="desc" class="note"></p>
+<h3>量體與區域圖例</h3><div class="legend" id="legend"></div>
+<h3>主要設備尺度</h3><table><thead><tr><th>項目</th><th>數量／尺寸</th></tr></thead><tbody id="dims"></tbody></table>
+<h3>配置區預留面積（非設備淨占地）</h3><table><thead><tr><th>區域</th><th>m²</th></tr></thead><tbody id="areas"></tbody></table>
+<p class="note">色塊代表保留區域；模型中的實體設備尺寸與保留區域面積不可混為一談。道路與未配置空間不等同完整消防退縮審查。</p>
+<div class="foot">基準：年產沼氣 1,800,000 m³；平均 205.5 m³/h。前、後脫硫儲氣各 4 小時 ⇒ 每顆有效儲氣 821.9 m³；理想球體等效直徑 11.62 m。球體為容量尺度示意，不是實際氣膜造型。未提供尺寸的附屬設備均依概念假設，需在基本設計階段確認。<br><br>版本 1.0 · 2026-11-05</div>
+</aside></div>
+<script type="module">
+import * as THREE from 'three';
+import {OrbitControls} from 'three/addons/controls/OrbitControls.js';
+import {CSS2DRenderer,CSS2DObject} from 'three/addons/renderers/CSS2DRenderer.js';
+const stage=document.getElementById('stage');
+const colors={dry:0x2ba991,wet:0x43aadd,pretreat:0xf0ab5e,storage:0xd7b982,process:0x8dbe92,gas:0x66d3da,desulf:0xa9a0f2,gen:0xf3c66a,liquid:0x86a4e8,road:0x415e6b};
+const hex=n=>'#'+n.toString(16).padStart(6,'0');
+const scene=new THREE.Scene();scene.background=new THREE.Color(0x0b202b);scene.fog=new THREE.Fog(0x0b202b,170,340);
+const camera=new THREE.PerspectiveCamera(43,stage.clientWidth/stage.clientHeight,0.1,1000);camera.position.set(121,126,146);
+const renderer=new THREE.WebGLRenderer({antialias:true,alpha:false});renderer.setPixelRatio(Math.min(devicePixelRatio,2));renderer.setSize(stage.clientWidth,stage.clientHeight);renderer.shadowMap.enabled=true;renderer.shadowMap.type=THREE.PCFSoftShadowMap;renderer.outputColorSpace=THREE.SRGBColorSpace;stage.prepend(renderer.domElement);
+const labelRenderer=new CSS2DRenderer();labelRenderer.setSize(stage.clientWidth,stage.clientHeight);labelRenderer.domElement.style.position='absolute';labelRenderer.domElement.style.top='0';labelRenderer.domElement.style.pointerEvents='none';stage.appendChild(labelRenderer.domElement);
+const ctl=new OrbitControls(camera,renderer.domElement);ctl.target.set(50,0,50);ctl.enableDamping=true;ctl.maxPolarAngle=Math.PI/2-0.03;ctl.minDistance=45;ctl.maxDistance=330;ctl.update();
+scene.add(new THREE.HemisphereLight(0xcfefff,0x354c40,2.05));const sun=new THREE.DirectionalLight(0xffffff,2.5);sun.position.set(65,125,20);sun.castShadow=true;sun.shadow.mapSize.set(2048,2048);sun.shadow.camera.left=-100;sun.shadow.camera.right=100;sun.shadow.camera.top=100;sun.shadow.camera.bottom=-100;scene.add(sun);
+const mat=(color,opacity=1)=>new THREE.MeshStandardMaterial({color,transparent:opacity<1,opacity,roughness:0.68,metalness:0.08,side:THREE.DoubleSide});
+const ground=new THREE.Mesh(new THREE.PlaneGeometry(114,114),mat(0x142d36));ground.rotation.x=-Math.PI/2;ground.position.set(50,-0.09,50);ground.receiveShadow=true;scene.add(ground);
+const grid=new THREE.GridHelper(100,20,0x45616c,0x2d4956);grid.position.set(50,-0.02,50);scene.add(grid);
+const boundary=new THREE.LineSegments(new THREE.EdgesGeometry(new THREE.BoxGeometry(100,0.13,100)),new THREE.LineBasicMaterial({color:0xa9d8d1}));boundary.position.set(50,0,50);scene.add(boundary);
+const dynamic=new THREE.Group();scene.add(dynamic);const zoneGroup=new THREE.Group();dynamic.add(zoneGroup);const equipmentGroup=new THREE.Group();dynamic.add(equipmentGroup);const labelsGroup=new THREE.Group();dynamic.add(labelsGroup);
+const box=(parent,x,z,w,d,h,c,y=0)=>{let o=new THREE.Mesh(new THREE.BoxGeometry(w,h,d),mat(c));o.position.set(x,y+h/2,z);o.castShadow=h>0.3;o.receiveShadow=true;parent.add(o);return o};
+const cylinder=(parent,x,z,r,h,c)=>{let o=new THREE.Mesh(new THREE.CylinderGeometry(r,r,h,48),mat(c));o.position.set(x,h/2,z);o.castShadow=true;o.receiveShadow=true;parent.add(o);return o};
+const sphere=(parent,x,z,r,c,y=r)=>{const o=new THREE.Mesh(new THREE.SphereGeometry(r,36,22),mat(c,0.83));o.position.set(x,y,z);o.castShadow=true;parent.add(o);return o};
+const label=(txt,x,z,y)=>{let el=document.createElement('div');el.className='label';el.textContent=txt;let o=new CSS2DObject(el);o.position.set(x,y,z);labelsGroup.add(o);return o};
+const zone=(name,x,z,w,d,c)=>{let a=box(zoneGroup,x,z,w,d,0.09,c,0.02);a.material.transparent=true;a.material.opacity=.18;let e=new THREE.LineSegments(new THREE.EdgesGeometry(new THREE.BoxGeometry(w,0.12,d)),new THREE.LineBasicMaterial({color:c,transparent:true,opacity:.75}));e.position.set(x,.09,z);zoneGroup.add(e);return a};
+const commonZones=[
+['前處理（破碎、混拌）',20,13,28,16,'pretreat',448],
+['沼渣沼液暫存',49,13,22,16,'storage',352],
+['沼渣沼液處理',79.5,36.5,29,21,'process',609],
+['沼氣脫硫',79,58,20,14,'desulf',280],
+['沼氣儲存',81,79,32,26,'gas',832],
+['發電機區',82.5,13,23,16,'gen',368]
+];
+const makeCommon=()=>{
+commonZones.forEach(a=>zone(a[0],a[1],a[2],a[3],a[4],colors[a[5]]));
+box(equipmentGroup,14,12,11,8,6.5,0xf0ab5e);box(equipmentGroup,26,12,8,5,5,0xcf874a);label('破碎 · 混拌',20,14,9);
+box(equipmentGroup,45,12,9,10,5,0xd7b982);box(equipmentGroup,54,12,8,9,4,0xc9a86c);label('沼渣／沼液暫存',49,13,7);
+cylinder(equipmentGroup,72,35,4.3,7,0x8dbe92);cylinder(equipmentGroup,84,35,4.3,7,0x7bab81);box(equipmentGroup,90,41,6,7,4,0x659b71);label('沼渣沼液處理',79,39,10);
+cylinder(equipmentGroup,75,57,2.2,7,0xa9a0f2);cylinder(equipmentGroup,83,57,2.2,7,0x8f83d5);label('脫硫區',79,60,9);
+box(equipmentGroup,82.5,13,12.192,2.438,2.896,0xf3c66a);label('550 kW 發電機',82.5,13,5);
+const gasr=Math.cbrt(3*(1800000/365/24*4)/(4*Math.PI));sphere(equipmentGroup,73,78,gasr,0x66d3da);sphere(equipmentGroup,89,78,gasr,0x4ab5c8);
+label('脫硫前 822 m³',73,78,13.1);label('脫硫後 822 m³',89,78,13.1);
+box(zoneGroup,50,25.6,90,5.5,.03,colors.road,0.02);box(zoneGroup,62.5,63,5.5,73,.03,colors.road,0.02);
+label('車輛出入口',50,2,2);};
+const dryRows=[35,52,69,86];const addDry=()=>{zone('乾式反應器預留',32.5,63,53,72,colors.dry);for(let j=0;j<4;j++)for(let i=0;i<10;i++){let x=8.6+i*3.25,z=dryRows[j];box(equipmentGroup,x,z,2.438,12.192,2.896, j%2===0?0x2ba991:0x279785);box(equipmentGroup,x,z-6.13,2.438,.12,2.55,0x195d58)}label('40 × 40呎貨櫃（4 排 × 10）',27,43,6);cylinder(equipmentGroup,52,83,4,7,colors.liquid);label('沼液緩衝槽 Ø8m（暫估）',52,83,9);};
+const addWet=()=>{zone('攪拌槽與維修預留',32.5,63,53,72,colors.wet);[[18,46],[37,46],[27.5,69]].forEach((a,i)=>{let t=cylinder(equipmentGroup,a[0],a[1],5,13.5,0x43aadd);let edge=new THREE.LineSegments(new THREE.EdgesGeometry(new THREE.CylinderGeometry(5,5,13.5,32)),new THREE.LineBasicMaterial({color:0xb9eaff,transparent:true,opacity:.55}));edge.position.copy(t.position);equipmentGroup.add(edge);cylinder(equipmentGroup,a[0],a[1],.6,2.2,0xc9e3e5).position.y=14.6;label('攪拌槽 '+(i+1)+' Ø10 × H13.5m',a[0],a[1],17.5)});};
+const areas=(mode)=>{let items=commonZones.map(a=>[a[0],a[6]]);items.unshift([mode==='dry'?'乾式反應器與作業區':'攪拌槽與維修區',3816]);let used=items.reduce((s,r)=>s+r[1],0);items.push(['其餘道路/退縮/保留（未淨分配）',10000-used]);return items;};
+const legendItems=[['dry','乾式反應器'],['wet','攪拌槽'],['pretreat','前處理'],['storage','沼渣沼液暫存'],['process','沼渣沼液處理'],['gas','沼氣袋'],['desulf','脫硫'],['gen','發電機'],['liquid','沼液槽'],['road','主要車道（示意）']];
+document.getElementById('legend').innerHTML=legendItems.map(a=>'<span class="sw" style="background:'+hex(colors[a[0]])+'"></span><span>'+a[1]+'</span>').join('');
+let mode='dry',labelsVisible=true,zonesVisible=true;
+function update(next){mode=next;while(dynamic.children.length){dynamic.remove(dynamic.children[0])}zoneGroup.clear();equipmentGroup.clear();labelsGroup.clear();dynamic.add(zoneGroup,equipmentGroup,labelsGroup);makeCommon();if(mode==='dry')addDry();else addWet();labelsGroup.visible=labelsVisible;zoneGroup.visible=zonesVisible;
+document.getElementById('dry').classList.toggle('active',mode==='dry');document.getElementById('wet').classList.toggle('active',mode==='wet');
+document.getElementById('m1title').textContent=mode==='dry'?'40 呎貨櫃':'攪拌槽';document.getElementById('m1').textContent=mode==='dry'?'40':'3';document.getElementById('m1unit').textContent=' 座';
+document.getElementById('m2').textContent=mode==='dry'?'2.90':'13.50';
+document.getElementById('desc').textContent=mode==='dry'?'既有 4 貨櫃／10 噸每日經驗，線性放大為 40 貨櫃。每櫃採 ISO 40 呎標準外框 12.192 × 2.438 × 2.896 m（High Cube 高度暫估），另示意配置一座沼液緩衝槽。':'3 座 Ø10 × H13.5 m 攪拌槽，總幾何容積約 3,181 m³；實際有效工作容積、停留時間、基礎和管廊仍需確認。';
+let dims=mode==='dry'?[['貨櫃反應器','40 × 12.19×2.44×2.90m'],['沼液槽（暫估）','1 × Ø8×H7m']]:[['攪拌反應器','3 × Ø10×H13.5m'],['總幾何容積','3,181 m³']];
+dims.push(['前／後沼氣儲存','各 822 m³ / Ø11.62m'],['發電機貨櫃','1 × 12.19×2.44×2.90m'],['前處理及其他設施','未提供尺寸，概念估算']);
+document.getElementById('dims').innerHTML=dims.map(a=>'<tr><td>'+a[0]+'</td><td>'+a[1]+'</td></tr>').join('');
+document.getElementById('areas').innerHTML=areas(mode).map(a=>'<tr><td>'+a[0]+'</td><td>'+a[1].toLocaleString()+'</td></tr>').join('');}
+update('dry');
+document.getElementById('dry').onclick=()=>update('dry');document.getElementById('wet').onclick=()=>update('wet');
+const home=()=>{camera.position.set(121,126,146);ctl.target.set(50,0,50);ctl.update()};document.getElementById('reset').onclick=()=>{home();document.getElementById('orbit').classList.add('active');document.getElementById('plan').classList.remove('active')};
+document.getElementById('plan').onclick=()=>{camera.position.set(50.01,180,50);ctl.target.set(50,0,50);ctl.update();document.getElementById('plan').classList.add('active');document.getElementById('orbit').classList.remove('active')};
+document.getElementById('orbit').onclick=()=>{home();document.getElementById('orbit').classList.add('active');document.getElementById('plan').classList.remove('active')};
+document.getElementById('labels').onclick=()=>{labelsVisible=!labelsVisible;labelsGroup.visible=labelsVisible;document.getElementById('labels').classList.toggle('active',labelsVisible)};
+document.getElementById('zones').onclick=()=>{zonesVisible=!zonesVisible;zoneGroup.visible=zonesVisible;document.getElementById('zones').classList.toggle('active',zonesVisible)};
+window.addEventListener('resize',()=>{camera.aspect=stage.clientWidth/stage.clientHeight;camera.updateProjectionMatrix();renderer.setSize(stage.clientWidth,stage.clientHeight);labelRenderer.setSize(stage.clientWidth,stage.clientHeight)});
+function render(){requestAnimationFrame(render);ctl.update();renderer.render(scene,camera);labelRenderer.render(scene,camera)}render();
+</script></body></html>
