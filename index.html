@@ -12,7 +12,7 @@
 </head>
 <body><div id="app"><main id="stage">
 <div class="top"><div class="stamp">CONCEPT DESIGN · TRUE-SCALE MASSING</div><h1>菲律賓厭氧沼氣場｜100 噸／日<br>1 公頃基地 · 兩方案 3D 量體比較</h1><p>物件採公尺座標 1:1 建模 · 基地 100 × 100 m · 高度與形狀為概念設計</p>
-<div class="tools"><button id="orbit" class="active">立體視角</button><button id="plan">俯視平面</button><button id="reset">重設視角</button><button id="labels" class="active">顯示標籤</button><button id="zones" class="active">顯示預留區</button></div></div>
+<div class="tools"><button id="orbit" class="active">立體視角</button><button id="plan">俯視平面</button><button id="reset">重設視角</button><button id="labels" class="active">顯示標籤</button><button id="zones" class="active">顯示預留區</button><button id="screenshot" title="下載目前視角的透明背景圖片">📷 下載透明 PNG</button></div></div>
 <div id="tip"></div><div class="scale">操作：左鍵旋轉 · 滾輪縮放 · 右鍵平移<br>基地範圍 100 × 100 m｜所有主設備以真實公尺尺寸建模</div><div class="bottomkey">N ↑　概念配置，非施工圖</div><div id="error">3D 函式庫載入失敗。請確認網路連線，並透過本機 HTTP 伺服器或 GitHub Pages 開啟。</div>
 </main><aside class="side">
 <h2>厭氧設備形式</h2><div class="mode"><button id="dry" class="active">A · 乾式貨櫃型</button><button id="wet">B · 攪拌槽型</button></div>
@@ -33,7 +33,7 @@ const colors={dry:0x2ba991,wet:0x43aadd,pretreat:0xf0ab5e,storage:0xd7b982,proce
 const hex=n=>'#'+n.toString(16).padStart(6,'0');
 const scene=new THREE.Scene();scene.background=new THREE.Color(0x0b202b);scene.fog=new THREE.Fog(0x0b202b,170,340);
 const camera=new THREE.PerspectiveCamera(43,stage.clientWidth/stage.clientHeight,0.1,1000);camera.position.set(121,126,146);
-const renderer=new THREE.WebGLRenderer({antialias:true,alpha:false});renderer.setPixelRatio(Math.min(devicePixelRatio,2));renderer.setSize(stage.clientWidth,stage.clientHeight);renderer.shadowMap.enabled=true;renderer.shadowMap.type=THREE.PCFSoftShadowMap;renderer.outputColorSpace=THREE.SRGBColorSpace;stage.prepend(renderer.domElement);
+const renderer=new THREE.WebGLRenderer({antialias:true,alpha:true,preserveDrawingBuffer:true});renderer.setPixelRatio(Math.min(devicePixelRatio,2));renderer.setSize(stage.clientWidth,stage.clientHeight);renderer.shadowMap.enabled=true;renderer.shadowMap.type=THREE.PCFSoftShadowMap;renderer.outputColorSpace=THREE.SRGBColorSpace;stage.prepend(renderer.domElement);
 const labelRenderer=new CSS2DRenderer();labelRenderer.setSize(stage.clientWidth,stage.clientHeight);labelRenderer.domElement.style.position='absolute';labelRenderer.domElement.style.top='0';labelRenderer.domElement.style.pointerEvents='none';stage.appendChild(labelRenderer.domElement);
 const ctl=new OrbitControls(camera,renderer.domElement);ctl.target.set(50,0,50);ctl.enableDamping=true;ctl.maxPolarAngle=Math.PI/2-0.03;ctl.minDistance=45;ctl.maxDistance=330;ctl.update();
 scene.add(new THREE.HemisphereLight(0xcfefff,0x354c40,2.05));const sun=new THREE.DirectionalLight(0xffffff,2.5);sun.position.set(65,125,20);sun.castShadow=true;sun.shadow.mapSize.set(2048,2048);sun.shadow.camera.left=-100;sun.shadow.camera.right=100;sun.shadow.camera.top=100;sun.shadow.camera.bottom=-100;scene.add(sun);
@@ -88,6 +88,29 @@ document.getElementById('plan').onclick=()=>{camera.position.set(50.01,180,50);c
 document.getElementById('orbit').onclick=()=>{home();document.getElementById('orbit').classList.add('active');document.getElementById('plan').classList.remove('active')};
 document.getElementById('labels').onclick=()=>{labelsVisible=!labelsVisible;labelsGroup.visible=labelsVisible;document.getElementById('labels').classList.toggle('active',labelsVisible)};
 document.getElementById('zones').onclick=()=>{zonesVisible=!zonesVisible;zoneGroup.visible=zonesVisible;document.getElementById('zones').classList.toggle('active',zonesVisible)};
+document.getElementById('screenshot').onclick=()=>{
+ const btn=document.getElementById('screenshot');const oldText=btn.textContent;
+ btn.disabled=true;btn.textContent='正在產生 PNG…';
+ try {
+  const originalBackground=scene.background,originalFog=scene.fog;
+  const originalGround=ground.visible,originalGrid=grid.visible,originalBoundary=boundary.visible;
+  const w=stage.clientWidth,h=stage.clientHeight;
+  const exportW=Math.min(4096,Math.round(w*2)),exportH=Math.min(4096,Math.round(h*2));
+  const aspect=camera.aspect;
+  scene.background=null;scene.fog=null;ground.visible=false;grid.visible=false;boundary.visible=false;
+  try {
+   renderer.setSize(exportW,exportH,false);camera.aspect=exportW/exportH;camera.updateProjectionMatrix();
+   renderer.setClearColor(0x000000,0);
+   renderer.clear(true,true,true);renderer.render(scene,camera);
+   const png=renderer.domElement.toDataURL('image/png');
+   const a=document.createElement('a');a.download='biogas-3d-'+mode+'-transparent.png';a.href=png;document.body.appendChild(a);a.click();a.remove();
+  } finally {
+   scene.background=originalBackground;scene.fog=originalFog;ground.visible=originalGround;grid.visible=originalGrid;boundary.visible=originalBoundary;
+   camera.aspect=aspect;camera.updateProjectionMatrix();renderer.setSize(w,h,false);
+  }
+ } catch(e){console.error(e);alert('截圖失敗：'+e.message);}
+ finally {btn.disabled=false;btn.textContent=oldText;}
+};
 window.addEventListener('resize',()=>{camera.aspect=stage.clientWidth/stage.clientHeight;camera.updateProjectionMatrix();renderer.setSize(stage.clientWidth,stage.clientHeight);labelRenderer.setSize(stage.clientWidth,stage.clientHeight)});
 function render(){requestAnimationFrame(render);ctl.update();renderer.render(scene,camera);labelRenderer.render(scene,camera)}render();
 </script></body></html>
