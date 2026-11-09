@@ -183,6 +183,81 @@ function industrialDesulfurizationSkid(x,z){
  label('三塔式模組脫硫系統（參考外觀）',x,z,17);
 }
 
+
+function referencePlasticDigestateTank(x,z,r=2.2,h=5.4){
+  // Photo-inspired black polyethylene storage tank with silver lower protective cladding.
+  // Dimensions are provisional; tank sits on a raised cross-braced steel platform.
+  const leg=0x7d9298, cladding=0xa8b6ba;
+  slab(x,z,2*r+1.3,2*r+1.3);
+  const standH=1.35, yTop=standH;
+  for(const dx of [-r*.78,r*.78])for(const dz of [-r*.78,r*.78]){
+    beam(x+dx,.18,z+dz,x+dx,standH,z+dz,.095,leg);
+  }
+  for(const dz of [-r*.78,r*.78]){
+    beam(x-r*.78,.25,z+dz,x+r*.78,standH,z+dz,.068,leg);
+    beam(x-r*.78,standH,z+dz,x+r*.78,.25,z+dz,.068,leg);
+  }
+  for(const dx of [-r*.78,r*.78]){
+    beam(x+dx,.25,z-r*.78,x+dx,standH,z+r*.78,.068,leg);
+    beam(x+dx,standH,z-r*.78,x+dx,.25,z+r*.78,.068,leg);
+  }
+  cylinder(equipmentGroup,x,z,r,h,0x1f2729).position.y=standH+h/2;
+  // Lower silver shell, 57% of vessel body height; photo reference.
+  cylinder(equipmentGroup,x,z,r+.035,h*.57,cladding).position.y=standH+h*.57/2;
+  torus(x,standH+h*.57,z,r+.05,0xc5cdd0,.06);
+  const cap=cylinder(equipmentGroup,x,z,r*.32,.19,0x10191b);
+  cap.position.y=standH+h+.1;
+  const neck=cylinder(equipmentGroup,x+r*.56,z,r*.15,.22,0x171e20);
+  neck.position.y=standH+h+.05;
+  // Pipe fittings and bottom discharge.
+  beam(x+r*.8,standH+.32,z,x+r+1.0,standH+.32,z,.12,0x869da2);
+  box(equipmentGroup,x+r+1.2,z,.47,.55,.55,0x6f858b,.5);
+}
+function referenceSlantedSeparator(x,z){
+  // Photo-inspired stainless-steel wedge-wire / screw separation enclosure.
+  // Concept footprint 4.9 x 3.5 m. Inclined sieve, collection hopper and side motor.
+  const silver=0xb8c1c4, edge=0xe1e4e3, dark=0x788b8e;
+  slab(x,z,6.3,4.5);
+  // Main tapered body with a top slope facing the front (-z).
+  const vertices=new Float32Array([
+     -2.2,1.1,-1.55,  2.2,1.1,-1.55, 2.2,3.55,.8, -2.2,3.55,.8,
+     -2.2,1.1,1.55,  2.2,1.1,1.55, 2.2,3.55,1.55, -2.2,3.55,1.55
+  ]);
+  // side walls and sloped front plane, polygon triangulation.
+  const ids=[0,1,2,0,2,3, 4,6,5,4,7,6, 0,3,7,0,7,4, 1,5,6,1,6,2, 3,2,6,3,6,7, 0,4,5,0,5,1];
+  const geometry=new THREE.BufferGeometry();
+  geometry.setAttribute('position',new THREE.BufferAttribute(vertices,3));geometry.setIndex(ids);geometry.computeVertexNormals();
+  const body=new THREE.Mesh(geometry,new THREE.MeshStandardMaterial({color:silver,metalness:.55,roughness:.43,side:THREE.DoubleSide}));
+  body.position.set(x,0,z);body.castShadow=true;equipmentGroup.add(body);
+  // The visible inclined front hatch and partially exposed wedge-wire screen.
+  const slopeA=new THREE.Vector3(x,1.2,z-1.57),slopeB=new THREE.Vector3(x,3.55,z+.8);
+  const incline=slopeB.clone().sub(slopeA),length=incline.length(),mid=slopeA.clone().add(slopeB).multiplyScalar(.5);
+  const panel=new THREE.Mesh(new THREE.BoxGeometry(3.55,.11,length*.70),new THREE.MeshStandardMaterial({color:0x8c9c9e,metalness:.45,roughness:.5}));
+  panel.position.copy(mid);
+  panel.quaternion.setFromUnitVectors(new THREE.Vector3(0,0,1),incline.normalize());
+  equipmentGroup.add(panel);
+  // Guard ribs atop inclined screening hatch.
+  for(let i=-6;i<=6;i++){
+    const xx=x+i*.26;
+    beam(xx,1.43,z-1.37,xx,3.27,z+.51,.024,0xcfd7d8);
+  }
+  for(const yy of [.8,1.65,2.45]){
+    const frac=(yy-.8)/2.45;
+    beam(x-1.9,1.3+frac*2.0,z-1.42+frac*1.85,x+1.9,1.3+frac*2.0,z-1.42+frac*1.85,.038,edge);
+  }
+  // Front receiving trough and low discharge lip.
+  box(equipmentGroup,x,z-2.03,4.65,.92,.7,0x9ba9ac,.42);
+  box(equipmentGroup,x,z-2.51,4.65,.12,.4,0xc5cccf,.3);
+  // Side gearbox, drive coupling and side frame.
+  box(equipmentGroup,x+2.5,z+.42,1.0,1.35,1.1,0x9eaaad,1.2);
+  const motor=cylinder(equipmentGroup,x+3.0,z+.42,.52,.95,0x74878b);
+  motor.rotation.z=Math.PI/2;motor.position.y=1.85;
+  beam(x+2.4,1.86,z+.42,x+3.35,1.86,z+.42,.22,0x677c81);
+  for(const dx of [-1.8,1.8])for(const dz of [-.9,.9])beam(x+dx,.25,z+dz,x+dx,1.05,z+dz,.07,0x87969a);
+  // A small back feed nozzle.
+  beam(x,3.4,z+1.3,x,4.1,z+1.3,.17,0x899da0);
+}
+
 const makeCommon=()=>{
  commonZones.forEach(a=>zone(a[0],a[1],a[2],a[3],a[4],colors[a[5]]));
  // Pre-treatment canopy, receiving hopper, shredding line and mixer.
@@ -199,13 +274,12 @@ const makeCommon=()=>{
  for(let i=0;i<3;i++)box(equipmentGroup,42+i*2.6,13,2.3,7,1.05,0x9d9374);
  cylinder(equipmentGroup,55,13,3.1,4.5,0x788b80);torus(55,4.5,13,3.12,0xc5d4d1);
  label('沼渣堆置／沼液暫存',49,13,7.3);
- // Dewatering: tanks, screw press and conveyor.
+ // Digestate processing updated using user-supplied real-equipment photographs.
  shed(79.5,37,25,17,8.2,0x81999e);
- cylinder(equipmentGroup,71.8,37,3,6,0x748e7c);
- cylinder(equipmentGroup,82,37,2.8,5.5,0x7b9f8b);
- box(equipmentGroup,88.2,36,6,1.8,2.3,0xc2ced0,2.1);
- for(let i=0;i<4;i++)beam(85.5+i*1.6,2,37,85.5+i*1.6,3.5,37,.07,0x8c9b9f);
- label('固液分離／沼渣沼液處理',79,38,11);
+ referencePlasticDigestateTank(71.8,37,2.2,5.4);
+ referencePlasticDigestateTank(77.4,37,2.2,5.4);
+ referenceSlantedSeparator(87,37);
+ label('塑膠沼液槽／斜面式固液分離機',79,38,11);
  // Three-column industrial desulfurization skid based on supplied photo.
  industrialDesulfurizationSkid(79,58);
  // Generator (standard HC 40ft assumed) and electrical equipment.
