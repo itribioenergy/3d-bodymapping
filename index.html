@@ -12,17 +12,20 @@
 </head>
 <body><div id="app"><main id="stage">
 <div class="top"><div class="stamp">CONCEPT DESIGN · TRUE-SCALE MASSING</div><h1>菲律賓厭氧沼氣場｜100 噸／日<br>1 公頃基地 · 兩方案 3D 量體比較</h1><p>物件採公尺座標 1:1 建模 · 基地 100 × 100 m · 高度與形狀為概念設計</p>
-<div class="tools"><button id="orbit" class="active">立體視角</button><button id="plan">俯視平面</button><button id="reset">重設視角</button><button id="labels" class="active">顯示標籤</button><button id="zones" class="active">顯示預留區</button><button id="screenshot" title="下載目前視角的透明背景圖片">📷 下載透明 PNG</button></div></div>
+<div class="tools"><button id="orbit" class="active">立體視角</button><button id="plan">俯視平面</button><button id="reset">重設視角</button><button id="labels" class="active">顯示標籤</button><button id="zones" class="active">顯示預留區</button><button id="screenshot" title="下載目前視角的透明背景圖片">📷 下載透明 PNG</button><button id="scene-shot" title="下載包含場景與天空的 PNG">🌄 下載場景 PNG</button></div></div>
 <div id="tip"></div><div class="scale">操作：左鍵旋轉 · 滾輪縮放 · 右鍵平移<br>基地範圍 100 × 100 m｜所有主設備以真實公尺尺寸建模</div><div class="bottomkey">N ↑　概念配置，非施工圖</div><div id="error">3D 函式庫載入失敗。請確認網路連線，並透過本機 HTTP 伺服器或 GitHub Pages 開啟。</div>
 </main><aside class="side">
 <h2>厭氧設備形式</h2><div class="mode"><button id="dry" class="active">A · 乾式貨櫃型</button><button id="wet">B · 攪拌槽型</button></div>
+<h3>周邊環境</h3>
+<div class="mode envmode" style="flex-wrap:wrap"><button id="env-farm">🌴 熱帶農田</button><button id="env-industrial">🏭 鄉村工業區</button><button id="env-engineering" class="active">工程配置</button></div>
+<p class="note">周邊環境為視覺示意，不佔用一公頃基地；切換環境不會改變設備位置、尺寸與計算。</p>
 <div class="metricgrid"><div class="metric"><span>基地總面積</span><b>10,000</b><small> m²</small></div><div class="metric"><span>設計處理量</span><b>100</b><small> 噸/日</small></div><div class="metric"><span id="m1title">貨櫃反應器</span><b id="m1">40</b><small id="m1unit"> 座</small></div><div class="metric"><span id="m2title">主反應器最大高度</span><b id="m2">2.90</b><small> m</small></div></div>
 <p id="desc" class="note"></p>
 <h3>量體與區域圖例</h3><div class="legend" id="legend"></div>
 <h3>主要設備尺度</h3><table><thead><tr><th>項目</th><th>數量／尺寸</th></tr></thead><tbody id="dims"></tbody></table>
 <h3>配置區預留面積（非設備淨占地）</h3><table><thead><tr><th>區域</th><th>m²</th></tr></thead><tbody id="areas"></tbody></table>
 <p class="note">色塊代表保留區域；模型中的實體設備尺寸與保留區域面積不可混為一談。道路與未配置空間不等同完整消防退縮審查。</p>
-<div class="foot">基準：年產沼氣 1,800,000 m³；平均 205.5 m³/h。前、後脫硫儲氣各 4 小時 ⇒ 每顆有效儲氣 821.9 m³；理想球體等效直徑 11.62 m。球體為容量尺度示意，不是實際氣膜造型。未提供尺寸的附屬設備均依概念假設，需在基本設計階段確認。<br><br>版本 1.0 · 2026-11-05</div>
+<div class="foot">基準：年產沼氣 1,800,000 m³；平均 205.5 m³/h。前、後脫硫儲氣各 4 小時 ⇒ 每顆有效儲氣 821.9 m³；理想球體等效直徑 11.62 m。球體為容量尺度示意，不是實際氣膜造型。未提供尺寸的附屬設備均依概念假設，需在基本設計階段確認。<br><br>場景概念版 · 2026-11-09</div>
 </aside></div>
 <script type="module">
 import * as THREE from 'three';
@@ -41,7 +44,99 @@ const mat=(color,opacity=1)=>new THREE.MeshStandardMaterial({color,transparent:o
 const ground=new THREE.Mesh(new THREE.PlaneGeometry(114,114),mat(0x142d36));ground.rotation.x=-Math.PI/2;ground.position.set(50,-0.09,50);ground.receiveShadow=true;scene.add(ground);
 const grid=new THREE.GridHelper(100,20,0x45616c,0x2d4956);grid.position.set(50,-0.02,50);scene.add(grid);
 const boundary=new THREE.LineSegments(new THREE.EdgesGeometry(new THREE.BoxGeometry(100,0.13,100)),new THREE.LineBasicMaterial({color:0xa9d8d1}));boundary.position.set(50,0,50);scene.add(boundary);
+const surroundings=new THREE.Group();scene.add(surroundings);
+let environmentMode='engineering';
 const dynamic=new THREE.Group();scene.add(dynamic);const zoneGroup=new THREE.Group();dynamic.add(zoneGroup);const equipmentGroup=new THREE.Group();dynamic.add(equipmentGroup);const labelsGroup=new THREE.Group();dynamic.add(labelsGroup);
+
+// A deterministic, lightweight procedural landscape. Everything outside
+// the 100x100 m boundary is illustrative and never alters equipment scale.
+const envMaterial=(color)=>new THREE.MeshStandardMaterial({color,roughness:.95,metalness:0});
+function envRect(group,x,z,w,d,y,color){
+ const mesh=new THREE.Mesh(new THREE.BoxGeometry(w,.12,d),envMaterial(color));
+ mesh.position.set(x,y,z);mesh.receiveShadow=true;group.add(mesh);return mesh;
+}
+function envCylinder(group,x,y,z,r,h,color,segments=9){
+ const mesh=new THREE.Mesh(new THREE.CylinderGeometry(r,r,h,segments),envMaterial(color));
+ mesh.position.set(x,y,z);group.add(mesh);return mesh;
+}
+function envTree(group,x,z,height=7,type='palm'){
+ const trunk=envCylinder(group,x,height*.27,z,type==='palm'?.17:.28,height*.54,0x78604a,7);
+ if(type==='palm'){
+  for(let k=0;k<7;k++){
+   const a=k*Math.PI*2/7,leafLen=height*.47;
+   const origin=new THREE.Vector3(x,height*.56,z);
+   const tip=new THREE.Vector3(x+Math.cos(a)*leafLen,height*.39,z+Math.sin(a)*leafLen);
+   const vec=tip.clone().sub(origin);
+   const blade=new THREE.Mesh(new THREE.ConeGeometry(.45,vec.length(),5),envMaterial(k%2?0x397a42:0x448849));
+   blade.position.copy(origin).add(tip).multiplyScalar(.5);
+   blade.quaternion.setFromUnitVectors(new THREE.Vector3(0,1,0),vec.normalize());
+   group.add(blade);
+  }
+ }else{
+  for(const [dx,dy,dz,r] of [[0,.65,0,.24],[.8,.61,.2,.19],[-.7,.6,-.3,.18]]){
+   const crown=new THREE.Mesh(new THREE.IcosahedronGeometry(height*r,1),envMaterial(0x4a7d45));
+   crown.position.set(x+dx,height*dy,z+dz);group.add(crown);
+  }
+ }
+}
+function envBuilding(group,x,z,w,d,h,body=0xc9c7b5){
+ const walls=new THREE.Mesh(new THREE.BoxGeometry(w,h,d),envMaterial(body));walls.position.set(x,h/2,z);walls.castShadow=true;walls.receiveShadow=true;group.add(walls);
+ const roof=new THREE.Mesh(new THREE.BoxGeometry(w+.8,.36,d+.8),envMaterial(0x66747a));roof.position.set(x,h+.25,z);group.add(roof);
+ for(let j=0;j<Math.max(1,Math.floor(w/5));j++){
+  const door=new THREE.Mesh(new THREE.BoxGeometry(2.4,2.65,.09),envMaterial(0x627b82));
+  door.position.set(x-w/2+2.5+j*5,1.35,z-d/2-.08);group.add(door);
+ }
+}
+function createSurroundings(kind){
+ surroundings.clear();
+ if(kind==='engineering'){scene.background=new THREE.Color(0x0b202b);scene.fog=new THREE.Fog(0x0b202b,170,340);return;}
+ scene.background=new THREE.Color(kind==='farm'?0xb7dbed:0xc4d5dc);
+ scene.fog=new THREE.Fog(scene.background,210,400);
+ // Surrounding land is 250x250m, while the project boundary remains 100x100m.
+ envRect(surroundings,50,50,260,260,-.24,kind==='farm'?0x7eab6d:0x82957b);
+ // Four narrow landscape strips around the site boundary; no objects inside the site.
+ const sideCoords=[-13,113];
+ sideCoords.forEach(v=>{envRect(surroundings,v,50,19,100,-.15,kind==='farm'?0x649a4e:0x71855d);envRect(surroundings,50,v,100,19,-.15,kind==='farm'?0x649a4e:0x71855d);});
+ if(kind==='farm'){
+  // Rice fields represented by rectangular paddy plots + fine crop stripes.
+  for(let row=0;row<5;row++)for(let col=0;col<6;col++){
+   const px=-63+col*23,pz=-53+row*22;
+   if(px>-12&&px<104&&pz>-12&&pz<104)continue;
+   envRect(surroundings,px,pz,20,17,-.12,(row+col)%2?0x78a747:0x8db557);
+   for(let k=-7;k<=7;k+=2){
+    envRect(surroundings,px+k,pz,.16,15,-.025,0x527c38);
+   }
+  }
+  envRect(surroundings,50,-31,245,7,-.10,0x8b8e81);
+  envRect(surroundings,50,130,245,7,-.10,0x8b8e81);
+  [[-30,-15],[-27,12],[-29,45],[-30,80],[-25,115],[118,-15],[117,12],[119,55],[118,90],[116,119],[-10,-28],[35,-28],[83,-28],[120,-27],[-10,121],[28,122],[84,122],[112,123]].forEach((p,i)=>envTree(surroundings,p[0],p[1],6+(i%3)*1.6,i%4===0?'round':'palm'));
+  envBuilding(surroundings,-43,38,17,13,6,0xd6d0b5);
+  envBuilding(surroundings,145,73,22,15,7,0xd4cfbb);
+ }else{
+  // Rural industrial edge: paved access road, low warehouses, staging yards, some trees.
+  envRect(surroundings,50,-20,245,12,-.10,0x666f72);
+  envRect(surroundings,119,50,12,225,-.10,0x626d70);
+  envRect(surroundings,-33,72,18,75,-.1,0x999f9f);
+  envRect(surroundings,141,72,47,66,-.08,0xa6a7a0);
+  envBuilding(surroundings,-35,18,24,16,8,0xb6b9b6);
+  envBuilding(surroundings,-42,84,29,21,10,0xb8c2c2);
+  envBuilding(surroundings,149,39,27,24,11,0xc6c8b5);
+  envBuilding(surroundings,147,105,35,19,8,0xbeb8ad);
+  for(let i=0;i<4;i++){envRect(surroundings,125+i*5,75,2.8,9,.15,i%2?0x9eaaac:0xb6aa95);}
+  [[-12,-20],[20,-20],[95,-20],[120,17],[120,104],[-20,107],[-23,45],[135,130],[80,131]].forEach((p,i)=>envTree(surroundings,p[0],p[1],6+i%3, i%3===0?'palm':'round'));
+ }
+ // Entrance approach on the southern edge, without claiming an actual site-road design.
+ envRect(surroundings,50,112,10,24,-.10,0x818889);
+ // Perimeter fence runs directly outside the conceptual 1 hectare boundary.
+ const fenceMat=new THREE.LineBasicMaterial({color:0x8c9f99,transparent:true,opacity:.9});
+ const fencePoints=[];
+ for(const [ax,az,bx,bz] of [[0,0,100,0],[0,0,0,100],[100,0,100,100],[0,100,44,100],[56,100,100,100]]){
+  fencePoints.push(new THREE.Vector3(ax,.75,az),new THREE.Vector3(bx,.75,bz));
+  fencePoints.push(new THREE.Vector3(ax,1.5,az),new THREE.Vector3(bx,1.5,bz));
+ }
+ const fenceLines=new THREE.LineSegments(new THREE.BufferGeometry().setFromPoints(fencePoints),fenceMat);surroundings.add(fenceLines);
+}
+
 const box=(parent,x,z,w,d,h,c,y=0)=>{let o=new THREE.Mesh(new THREE.BoxGeometry(w,h,d),mat(c));o.position.set(x,y+h/2,z);o.castShadow=h>0.3;o.receiveShadow=true;parent.add(o);return o};
 const cylinder=(parent,x,z,r,h,c)=>{let o=new THREE.Mesh(new THREE.CylinderGeometry(r,r,h,48),mat(c));o.position.set(x,h/2,z);o.castShadow=true;o.receiveShadow=true;parent.add(o);return o};
 const sphere=(parent,x,z,r,c,y=r)=>{const o=new THREE.Mesh(new THREE.SphereGeometry(r,36,22),mat(c,0.83));o.position.set(x,y,z);o.castShadow=true;parent.add(o);return o};
@@ -343,6 +438,13 @@ dims.push(['前／後沼氣儲存','各 822 m³ / Ø11.62m'],['發電機貨櫃',
 document.getElementById('dims').innerHTML=dims.map(a=>'<tr><td>'+a[0]+'</td><td>'+a[1]+'</td></tr>').join('');
 document.getElementById('areas').innerHTML=areas(mode).map(a=>'<tr><td>'+a[0]+'</td><td>'+a[1].toLocaleString()+'</td></tr>').join('');}
 update('dry');
+const environmentButtons={farm:document.getElementById('env-farm'),industrial:document.getElementById('env-industrial'),engineering:document.getElementById('env-engineering')};
+function chooseEnvironment(value){
+ environmentMode=value;createSurroundings(value);
+ Object.entries(environmentButtons).forEach(([key,button])=>button.classList.toggle('active',key===value));
+}
+Object.entries(environmentButtons).forEach(([key,button])=>button.onclick=()=>chooseEnvironment(key));
+chooseEnvironment('engineering');
 document.getElementById('dry').onclick=()=>update('dry');document.getElementById('wet').onclick=()=>update('wet');
 const home=()=>{camera.position.set(121,126,146);ctl.target.set(50,0,50);ctl.update()};document.getElementById('reset').onclick=()=>{home();document.getElementById('orbit').classList.add('active');document.getElementById('plan').classList.remove('active')};
 document.getElementById('plan').onclick=()=>{camera.position.set(50.01,180,50);ctl.target.set(50,0,50);ctl.update();document.getElementById('plan').classList.add('active');document.getElementById('orbit').classList.remove('active')};
@@ -350,29 +452,35 @@ document.getElementById('orbit').onclick=()=>{home();document.getElementById('or
 document.getElementById('labels').onclick=()=>{labelsVisible=!labelsVisible;labelsGroup.visible=labelsVisible;document.getElementById('labels').classList.toggle('active',labelsVisible)};
 document.getElementById('zones').onclick=()=>{zonesVisible=!zonesVisible;zoneGroup.visible=zonesVisible;document.getElementById('zones').classList.toggle('active',zonesVisible)};
 
-document.getElementById('screenshot').onclick=()=>{
- const btn=document.getElementById('screenshot');const oldText=btn.textContent;
- btn.disabled=true;btn.textContent='正在產生 PNG…';
+
+function exportImage(includeScene){
+ const button=document.getElementById(includeScene?'scene-shot':'screenshot');
+ const oldText=button.textContent;button.disabled=true;button.textContent='正在產生 PNG…';
+ const oldBackground=scene.background,oldFog=scene.fog;
+ const oldGround=ground.visible,oldGrid=grid.visible,oldBoundary=boundary.visible,oldSurroundings=surroundings.visible;
+ const originalWidth=stage.clientWidth,originalHeight=stage.clientHeight,originalAspect=camera.aspect;
  try {
-  const originalBackground=scene.background,originalFog=scene.fog;
-  const originalGround=ground.visible,originalGrid=grid.visible,originalBoundary=boundary.visible;
-  const w=stage.clientWidth,h=stage.clientHeight;
-  const exportW=Math.min(4096,Math.round(w*2)),exportH=Math.min(4096,Math.round(h*2));
-  const aspect=camera.aspect;
-  scene.background=null;scene.fog=null;ground.visible=false;grid.visible=false;boundary.visible=false;
-  try {
-   renderer.setSize(exportW,exportH,false);camera.aspect=exportW/exportH;camera.updateProjectionMatrix();
-   renderer.setClearColor(0x000000,0);
-   renderer.clear(true,true,true);renderer.render(scene,camera);
-   const png=renderer.domElement.toDataURL('image/png');
-   const a=document.createElement('a');a.download='biogas-3d-'+mode+'-transparent.png';a.href=png;document.body.appendChild(a);a.click();a.remove();
-  } finally {
-   scene.background=originalBackground;scene.fog=originalFog;ground.visible=originalGround;grid.visible=originalGrid;boundary.visible=originalBoundary;
-   camera.aspect=aspect;camera.updateProjectionMatrix();renderer.setSize(w,h,false);
+  const width=Math.min(4096,Math.round(originalWidth*2)),height=Math.min(4096,Math.round(originalHeight*2));
+  if(!includeScene){scene.background=null;scene.fog=null;ground.visible=false;grid.visible=false;boundary.visible=false;surroundings.visible=false;}
+  else {
+   // Engineering mode still exports a normal colored view; other modes include their surroundings.
+   grid.visible=false;
   }
- } catch(e){console.error(e);alert('截圖失敗：'+e.message);}
- finally {btn.disabled=false;btn.textContent=oldText;}
-};
+  renderer.setSize(width,height,false);camera.aspect=width/height;camera.updateProjectionMatrix();
+  renderer.setClearColor(0x000000,includeScene?1:0);
+  renderer.clear(true,true,true);renderer.render(scene,camera);
+  const png=renderer.domElement.toDataURL('image/png');
+  const a=document.createElement('a');a.download='biogas-'+mode+'-'+(includeScene?'environment-'+environmentMode:'transparent')+'.png';
+  a.href=png;document.body.appendChild(a);a.click();a.remove();
+ }catch(error){console.error(error);alert('PNG 輸出失敗：'+error.message);}
+ finally {
+  scene.background=oldBackground;scene.fog=oldFog;ground.visible=oldGround;grid.visible=oldGrid;boundary.visible=oldBoundary;surroundings.visible=oldSurroundings;
+  camera.aspect=originalAspect;camera.updateProjectionMatrix();renderer.setSize(originalWidth,originalHeight,false);
+  button.disabled=false;button.textContent=oldText;
+ }
+}
+document.getElementById('screenshot').onclick=()=>exportImage(false);
+document.getElementById('scene-shot').onclick=()=>exportImage(true);
 window.addEventListener('resize',()=>{camera.aspect=stage.clientWidth/stage.clientHeight;camera.updateProjectionMatrix();renderer.setSize(stage.clientWidth,stage.clientHeight);labelRenderer.setSize(stage.clientWidth,stage.clientHeight)});
 function render(){requestAnimationFrame(render);ctl.update();renderer.render(scene,camera);labelRenderer.render(scene,camera)}render();
 </script></body></html>
