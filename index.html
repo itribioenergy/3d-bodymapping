@@ -39,14 +39,14 @@ const hex=n=>'#'+n.toString(16).padStart(6,'0');
 const scene=new THREE.Scene();scene.background=new THREE.Color(0x0b202b);scene.fog=new THREE.Fog(0x0b202b,170,340);
 const camera=new THREE.PerspectiveCamera(43,stage.clientWidth/stage.clientHeight,0.1,1000);camera.position.set(121,126,146);
 const renderer=new THREE.WebGLRenderer({antialias:true,alpha:true,preserveDrawingBuffer:true});renderer.setPixelRatio(Math.min(devicePixelRatio,2));renderer.setSize(stage.clientWidth,stage.clientHeight);renderer.shadowMap.enabled=true;renderer.shadowMap.type=THREE.PCFSoftShadowMap;renderer.outputColorSpace=THREE.SRGBColorSpace;
-renderer.toneMapping=THREE.ACESFilmicToneMapping;renderer.toneMappingExposure=1.18;
+renderer.toneMapping=THREE.ACESFilmicToneMapping;renderer.toneMappingExposure=1.03;
 const reflectionGenerator=new THREE.PMREMGenerator(renderer);
 scene.environment=reflectionGenerator.fromScene(new RoomEnvironment(),.04).texture;
 stage.prepend(renderer.domElement);
 const labelRenderer=new CSS2DRenderer();labelRenderer.setSize(stage.clientWidth,stage.clientHeight);labelRenderer.domElement.style.position='absolute';labelRenderer.domElement.style.top='0';labelRenderer.domElement.style.pointerEvents='none';stage.appendChild(labelRenderer.domElement);
 const ctl=new OrbitControls(camera,renderer.domElement);ctl.target.set(50,0,50);ctl.enableDamping=true;ctl.maxPolarAngle=Math.PI/2-0.03;ctl.minDistance=45;ctl.maxDistance=330;ctl.update();
 const hemi=new THREE.HemisphereLight(0xd3e8f5,0x6f745f,1.17);scene.add(hemi);
-const sun=new THREE.DirectionalLight(0xfff1d5,2.5);sun.position.set(100,145,15);sun.castShadow=true;
+const sun=new THREE.DirectionalLight(0xfff1d5,1.85);sun.position.set(100,145,15);sun.castShadow=true;
 sun.shadow.mapSize.set(2048,2048);sun.shadow.camera.left=-170;sun.shadow.camera.right=170;sun.shadow.camera.top=170;sun.shadow.camera.bottom=-170;
 sun.shadow.camera.near=10;sun.shadow.camera.far=450;sun.shadow.normalBias=.024;sun.shadow.radius=2.0;
 sun.target.position.set(50,0,50);scene.add(sun.target);scene.add(sun);
@@ -75,7 +75,7 @@ function texturedMaterial(color,kind='concrete',metalness=0,roughness=.86,repeat
 }
 
 const mat=(color,opacity=1)=>new THREE.MeshStandardMaterial({color,transparent:opacity<1,opacity,roughness:0.68,metalness:0.08,side:THREE.DoubleSide});
-const ground=new THREE.Mesh(new THREE.PlaneGeometry(114,114),texturedMaterial(0xdfe2dd,'concrete',0,.94,10,10));ground.rotation.x=-Math.PI/2;ground.position.set(50,-0.09,50);ground.receiveShadow=true;scene.add(ground);
+const ground=new THREE.Mesh(new THREE.PlaneGeometry(100,100),texturedMaterial(0xa5aaa5,'concrete',0,.98,9,9));ground.rotation.x=-Math.PI/2;ground.position.set(50,-0.06,50);ground.receiveShadow=true;scene.add(ground);
 const grid=new THREE.GridHelper(100,20,0x45616c,0x2d4956);grid.position.set(50,-0.02,50);scene.add(grid);
 const boundary=new THREE.LineSegments(new THREE.EdgesGeometry(new THREE.BoxGeometry(100,0.13,100)),new THREE.LineBasicMaterial({color:0xa9d8d1}));boundary.position.set(50,0,50);scene.add(boundary);
 const surroundings=new THREE.Group();scene.add(surroundings);
@@ -133,40 +133,40 @@ function createSurroundings(kind){
  scene.background=new THREE.Color(kind==='farm'?0xb7dbed:0xc4d5dc);
  scene.fog=new THREE.Fog(scene.background,210,400);
  // Surrounding land is 250x250m, while the project boundary remains 100x100m.
- envRect(surroundings,50,50,260,260,-.24,kind==='farm'?0x7eab6d:0x82957b);
+ envRect(surroundings,50,50,260,260,-.48,kind==='farm'?0x7eab6d:0x82957b);
  // Four narrow landscape strips around the site boundary; no objects inside the site.
  const sideCoords=[-13,113];
- sideCoords.forEach(v=>{envRect(surroundings,v,50,19,100,-.15,kind==='farm'?0x649a4e:0x71855d);envRect(surroundings,50,v,100,19,-.15,kind==='farm'?0x649a4e:0x71855d);});
+ sideCoords.forEach(v=>{envRect(surroundings,v,50,19,100,-.36,kind==='farm'?0x649a4e:0x71855d);envRect(surroundings,50,v,100,19,-.36,kind==='farm'?0x649a4e:0x71855d);});
  if(kind==='farm'){
   // Rice fields represented by rectangular paddy plots + fine crop stripes.
   for(let row=0;row<5;row++)for(let col=0;col<6;col++){
    const px=-63+col*23,pz=-53+row*22;
    if(px>-12&&px<104&&pz>-12&&pz<104)continue;
-   envRect(surroundings,px,pz,20,17,-.12,(row+col)%2?0x78a747:0x8db557);
+   envRect(surroundings,px,pz,20,17,-.29,(row+col)%2?0x78a747:0x8db557);
    for(let k=-7;k<=7;k+=2){
-    envRect(surroundings,px+k,pz,.16,15,-.025,0x527c38);
+    envRect(surroundings,px+k,pz,.16,15,-.20,0x527c38);
    }
   }
-  envRect(surroundings,50,-31,245,7,-.10,0x8b8e81);
-  envRect(surroundings,50,130,245,7,-.10,0x8b8e81);
+  envRect(surroundings,50,-31,245,7,-.28,0x8b8e81);
+  envRect(surroundings,50,130,245,7,-.28,0x8b8e81);
   [[-30,-15],[-27,12],[-29,45],[-30,80],[-25,115],[118,-15],[117,12],[119,55],[118,90],[116,119],[-10,-28],[35,-28],[83,-28],[120,-27],[-10,121],[28,122],[84,122],[112,123]].forEach((p,i)=>envTree(surroundings,p[0],p[1],6+(i%3)*1.6,i%4===0?'round':'palm'));
   envBuilding(surroundings,-43,38,17,13,6,0xd6d0b5);
   envBuilding(surroundings,145,73,22,15,7,0xd4cfbb);
  }else{
   // Rural industrial edge: paved access road, low warehouses, staging yards, some trees.
-  envRect(surroundings,50,-20,245,12,-.10,0x666f72);
-  envRect(surroundings,119,50,12,225,-.10,0x626d70);
-  envRect(surroundings,-33,72,18,75,-.1,0x999f9f);
-  envRect(surroundings,141,72,47,66,-.08,0xa6a7a0);
+  envRect(surroundings,50,-20,245,12,-.27,0x666f72);
+  envRect(surroundings,119,50,12,225,-.27,0x626d70);
+  envRect(surroundings,-33,72,18,75,-.26,0x999f9f);
+  envRect(surroundings,141,72,47,66,-.26,0xa6a7a0);
   envBuilding(surroundings,-35,18,24,16,8,0xb6b9b6);
   envBuilding(surroundings,-42,84,29,21,10,0xb8c2c2);
   envBuilding(surroundings,149,39,27,24,11,0xc6c8b5);
   envBuilding(surroundings,147,105,35,19,8,0xbeb8ad);
-  for(let i=0;i<4;i++){envRect(surroundings,125+i*5,75,2.8,9,.15,i%2?0x9eaaac:0xb6aa95);}
+  for(let i=0;i<4;i++){envRect(surroundings,125+i*5,75,2.8,9,-.17,i%2?0x9eaaac:0xb6aa95);}
   [[-12,-20],[20,-20],[95,-20],[120,17],[120,104],[-20,107],[-23,45],[135,130],[80,131]].forEach((p,i)=>envTree(surroundings,p[0],p[1],6+i%3, i%3===0?'palm':'round'));
  }
  // Entrance approach on the southern edge, without claiming an actual site-road design.
- envRect(surroundings,50,112,10,24,-.10,0x818889);
+ envRect(surroundings,50,112,10,24,-.25,0x818889);
  // Perimeter fence runs directly outside the conceptual 1 hectare boundary.
  const fenceMat=new THREE.LineBasicMaterial({color:0x8c9f99,transparent:true,opacity:.9});
  const fencePoints=[];
@@ -491,7 +491,7 @@ function setRenderQuality(value){
  qualityMode=value;renderer.setPixelRatio(value==='high'?Math.min(devicePixelRatio,2):Math.min(devicePixelRatio,1.25));
  const shadowSize=value==='high'?4096:2048;
  sun.shadow.mapSize.set(shadowSize,shadowSize);if(sun.shadow.map){sun.shadow.map.dispose();sun.shadow.map=null;}
- sun.shadow.needsUpdate=true;renderer.toneMappingExposure=value==='high'?1.2:1.13;
+ sun.shadow.needsUpdate=true;renderer.toneMappingExposure=value==='high'?1.08:1.0;
  Object.entries(qualityButtons).forEach(([key,b])=>b.classList.toggle('active',key===value));
 }
 Object.entries(qualityButtons).forEach(([key,b])=>b.onclick=()=>setRenderQuality(key));
