@@ -32,6 +32,10 @@
 <label for="tour-height" style="font-size:11px;align-self:center">高度</label>
 <select id="tour-height" aria-label="攝影機高度" style="flex:1;min-width:76px;background:#142d39;color:#d9f4f4;border:1px solid #355566;border-radius:8px;padding:8px"><option value="low">低空</option><option value="mid" selected>中空</option><option value="high">高空</option></select></div>
 <p id="tour-status" class="note" role="status">環繞中心：基地中央｜30 秒一圈｜錄影輸出依瀏覽器支援格式（WebM／MP4）</p>
+<h3>SimReady 工業素材（試用）</h3>
+<div class="mode"><button id="asset-original" class="active">原始設備</button><button id="asset-simready">NVIDIA 擬真素材</button></div>
+<p id="asset-status" class="note" role="status">載入三件試用資產：輸送帶、物流貨箱、工業置物架。僅作外觀補充，設備尺寸不改變。</p>
+<p class="note">資產來自 NVIDIA SimReady（CC BY 4.0），GLB 由 CodePawl 轉檔壓縮；若遠端載入失敗將維持原始設備。</p>
 <h3>周邊環境</h3>
 <div class="mode envmode" style="flex-wrap:wrap"><button id="env-farm">🌴 熱帶農田</button><button id="env-industrial">🏭 鄉村工業區</button><button id="env-engineering" class="active">工程配置</button></div>
 <p class="note">周邊環境為視覺示意，不佔用一公頃基地；切換環境不會改變設備位置、尺寸與計算。</p>
@@ -49,6 +53,8 @@ import * as THREE from 'three';
 import {OrbitControls} from 'three/addons/controls/OrbitControls.js';
 import {CSS2DRenderer,CSS2DObject} from 'three/addons/renderers/CSS2DRenderer.js';
 import {RoomEnvironment} from 'three/addons/environments/RoomEnvironment.js';
+import {GLTFLoader} from 'three/addons/loaders/GLTFLoader.js';
+import {MeshoptDecoder} from 'three/addons/libs/meshopt_decoder.module.js';
 const stage=document.getElementById('stage');
 const colors={dry:0x2ba991,wet:0x43aadd,pretreat:0xf0ab5e,storage:0xd7b982,process:0x8dbe92,gas:0x66d3da,desulf:0xa9a0f2,gen:0xf3c66a,liquid:0x86a4e8,road:0x415e6b};
 const hex=n=>'#'+n.toString(16).padStart(6,'0');
@@ -100,6 +106,9 @@ const grid=new THREE.GridHelper(100,20,0x45616c,0x2d4956);grid.position.set(50,-
 const boundary=new THREE.LineSegments(new THREE.EdgesGeometry(new THREE.BoxGeometry(100,0.13,100)),new THREE.LineBasicMaterial({color:0xa9d8d1}));boundary.position.set(50,0,50);scene.add(boundary);
 const surroundings=new THREE.Group();scene.add(surroundings);
 let environmentMode='engineering';let qualityMode='fast';
+const simreadyGroup=new THREE.Group();scene.add(simreadyGroup);
+let simreadyMode=false, simreadyReady=false, simreadyLoading=false;
+const simreadyStatus=document.getElementById('asset-status');
 const dynamic=new THREE.Group();scene.add(dynamic);const zoneGroup=new THREE.Group();dynamic.add(zoneGroup);const equipmentGroup=new THREE.Group();dynamic.add(equipmentGroup);const labelsGroup=new THREE.Group();dynamic.add(labelsGroup);
 
 // A deterministic, lightweight procedural landscape. Everything outside
@@ -198,6 +207,74 @@ function createSurroundings(kind){
  }
  const fenceLines=new THREE.LineSegments(new THREE.BufferGeometry().setFromPoints(fencePoints),fenceMat);surroundings.add(fenceLines);
 }
+
+
+// Optional SimReady asset enrichment. Original engineering geometry stays untouched.
+// NVIDIA original asset source (CC BY 4.0): https://huggingface.co/datasets/nvidia/simready-assets
+// Conversion / compression: https://huggingface.co/datasets/codepawl/simready-glb
+const simreadyCatalog=[
+ {id:'conveyor_belt_a47',label:'輸送帶',x:88,z:22,diameter:4.4,maxHeight:2.1,rotate:Math.PI*.5},
+ {id:'box_corrugated_brown_b20',label:'物流貨箱',x:77,z:82,diameter:1.35,maxHeight:1.4,rotate:0},
+ {id:'rack_large_empty_a02',label:'工業置物架',x:83.5,z:82,diameter:3.9,maxHeight:3.0,rotate:Math.PI*.5}
+];
+const simreadyLoader=new GLTFLoader();simreadyLoader.setMeshoptDecoder(MeshoptDecoder);
+function normalizedSimreadyObject(node,entry){
+ // Normalize asset dimensions and center, preserving internal proportions.
+ node.updateMatrixWorld(true);
+ const original=new THREE.Box3().setFromObject(node);
+ const extent=original.getSize(new THREE.Vector3());
+ const longest=Math.max(extent.x,extent.z,1e-4),height=Math.max(extent.y,1e-4);
+ const scale=Math.min(entry.diameter/longest,entry.maxHeight/height);
+ node.scale.multiplyScalar(scale);node.updateMatrixWorld(true);
+ const scaled=new THREE.Box3().setFromObject(node);
+ const center=scaled.getCenter(new THREE.Vector3());
+ const root=new THREE.Group();
+ root.add(node);
+ node.position.x-=center.x;node.position.z-=center.z;node.position.y-=scaled.min.y;
+ root.position.set(entry.x,.23,entry.z);
+ root.rotation.y=entry.rotate;
+ node.traverse(o=>{if(o.isMesh){o.castShadow=true;o.receiveShadow=true;}});
+ root.userData={source:'NVIDIA SimReady',id:entry.id,license:'CC BY 4.0'};
+ return root;
+}
+let simreadyLoaded=0,simreadyFailed=0;
+function refreshSimreadyStatus(){
+ const total=simreadyCatalog.length;
+ if(simreadyLoading)simreadyStatus.textContent='正在載入 SimReady 3D 素材：'+simreadyLoaded+'/'+total+' 件完成'+(simreadyFailed?'，'+simreadyFailed+' 件失敗':'');
+ else if(simreadyLoaded){
+  simreadyStatus.textContent='已啟用 NVIDIA 素材：'+simreadyLoaded+'/'+total+' 件成功'+(simreadyFailed?'，'+simreadyFailed+' 件載入失敗':'')+'。設備主體維持工程模型。';
+ }else if(simreadyFailed){simreadyStatus.textContent='素材下載未成功；原始設備模型仍正常顯示。可檢查網路或跨來源限制。';}
+}
+async function loadSimreadySamples(){
+ if(simreadyLoading||simreadyReady)return;
+ simreadyLoading=true;simreadyLoaded=0;simreadyFailed=0;refreshSimreadyStatus();
+ // Exact asset IDs are supplied by the NVIDIA SimReady catalog.
+ const jobs=simreadyCatalog.map(entry=>new Promise(resolve=>{
+  const url='https://huggingface.co/datasets/codepawl/simready-glb/resolve/main/glb/'+entry.id+'.glb';
+  simreadyLoader.load(url,gltf=>{
+   try{
+    const item=normalizedSimreadyObject(gltf.scene,entry);
+    simreadyGroup.add(item);simreadyLoaded++;
+   }catch(e){console.warn('SimReady scene normalization failed',entry.id,e);simreadyFailed++;}
+   refreshSimreadyStatus();resolve();
+  },undefined,e=>{console.warn('SimReady GLB could not be loaded',entry.id,e);simreadyFailed++;refreshSimreadyStatus();resolve();});
+ }));
+ await Promise.all(jobs);
+ simreadyReady=true;simreadyLoading=false;
+ simreadyGroup.visible=simreadyMode;
+ refreshSimreadyStatus();
+}
+function setSimreadyMode(yes){
+ simreadyMode=yes;
+ simreadyGroup.visible=yes;
+ document.getElementById('asset-original').classList.toggle('active',!yes);
+ document.getElementById('asset-simready').classList.toggle('active',yes);
+ if(yes&&!simreadyReady)loadSimreadySamples();
+ if(!yes)simreadyStatus.textContent='使用原始工程設備模型。可切換 NVIDIA 試用素材作外觀補充。';
+ else refreshSimreadyStatus();
+}
+document.getElementById('asset-original').onclick=()=>setSimreadyMode(false);
+document.getElementById('asset-simready').onclick=()=>setSimreadyMode(true);
 
 const box=(parent,x,z,w,d,h,c,y=0)=>{const finish=(h>.3 && parent===equipmentGroup && Math.max(w,d)>1.5)?texturedMaterial(c,'steel',.27,.66):mat(c);
  let o=new THREE.Mesh(new THREE.BoxGeometry(w,h,d),finish);o.position.set(x,y+h/2,z);o.castShadow=h>0.3;o.receiveShadow=true;parent.add(o);return o};
