@@ -19,40 +19,76 @@
 <h3>周邊環境</h3>
 <div class="mode envmode" style="flex-wrap:wrap"><button id="env-farm">🌴 熱帶農田</button><button id="env-industrial">🏭 鄉村工業區</button><button id="env-engineering" class="active">工程配置</button></div>
 <p class="note">周邊環境為視覺示意，不佔用一公頃基地；切換環境不會改變設備位置、尺寸與計算。</p>
-<div class="metricgrid"><div class="metric"><span>基地總面積</span><b>10,000</b><small> m²</small></div><div class="metric"><span>設計處理量</span><b>100</b><small> 噸/日</small></div><div class="metric"><span id="m1title">貨櫃反應器</span><b id="m1">40</b><small id="m1unit"> 座</small></div><div class="metric"><span id="m2title">主反應器最大高度</span><b id="m2">2.90</b><small> m</small></div></div>
+<h3>渲染品質</h3><div class="mode"><button id="quality-fast" class="active">流暢互動</button><button id="quality-high">高品質展示</button></div>
+<p class="note">提高光影、材質及解析度；透明 PNG 截圖不受環境模式影響。</p><div class="metricgrid"><div class="metric"><span>基地總面積</span><b>10,000</b><small> m²</small></div><div class="metric"><span>設計處理量</span><b>100</b><small> 噸/日</small></div><div class="metric"><span id="m1title">貨櫃反應器</span><b id="m1">40</b><small id="m1unit"> 座</small></div><div class="metric"><span id="m2title">主反應器最大高度</span><b id="m2">2.90</b><small> m</small></div></div>
 <p id="desc" class="note"></p>
 <h3>量體與區域圖例</h3><div class="legend" id="legend"></div>
 <h3>主要設備尺度</h3><table><thead><tr><th>項目</th><th>數量／尺寸</th></tr></thead><tbody id="dims"></tbody></table>
 <h3>配置區預留面積（非設備淨占地）</h3><table><thead><tr><th>區域</th><th>m²</th></tr></thead><tbody id="areas"></tbody></table>
 <p class="note">色塊代表保留區域；模型中的實體設備尺寸與保留區域面積不可混為一談。道路與未配置空間不等同完整消防退縮審查。</p>
-<div class="foot">基準：年產沼氣 1,800,000 m³；平均 205.5 m³/h。前、後脫硫儲氣各 4 小時 ⇒ 每顆有效儲氣 821.9 m³；理想球體等效直徑 11.62 m。球體為容量尺度示意，不是實際氣膜造型。未提供尺寸的附屬設備均依概念假設，需在基本設計階段確認。<br><br>場景概念版 · 2026-11-09</div>
+<div class="foot">基準：年產沼氣 1,800,000 m³；平均 205.5 m³/h。前、後脫硫儲氣各 4 小時 ⇒ 每顆有效儲氣 821.9 m³；理想球體等效直徑 11.62 m。球體為容量尺度示意，不是實際氣膜造型。未提供尺寸的附屬設備均依概念假設，需在基本設計階段確認。<br><br>材質光影升級版 · 2026-11-09</div>
 </aside></div>
 <script type="module">
 import * as THREE from 'three';
 import {OrbitControls} from 'three/addons/controls/OrbitControls.js';
 import {CSS2DRenderer,CSS2DObject} from 'three/addons/renderers/CSS2DRenderer.js';
+import {RoomEnvironment} from 'three/addons/environments/RoomEnvironment.js';
 const stage=document.getElementById('stage');
 const colors={dry:0x2ba991,wet:0x43aadd,pretreat:0xf0ab5e,storage:0xd7b982,process:0x8dbe92,gas:0x66d3da,desulf:0xa9a0f2,gen:0xf3c66a,liquid:0x86a4e8,road:0x415e6b};
 const hex=n=>'#'+n.toString(16).padStart(6,'0');
 const scene=new THREE.Scene();scene.background=new THREE.Color(0x0b202b);scene.fog=new THREE.Fog(0x0b202b,170,340);
 const camera=new THREE.PerspectiveCamera(43,stage.clientWidth/stage.clientHeight,0.1,1000);camera.position.set(121,126,146);
-const renderer=new THREE.WebGLRenderer({antialias:true,alpha:true,preserveDrawingBuffer:true});renderer.setPixelRatio(Math.min(devicePixelRatio,2));renderer.setSize(stage.clientWidth,stage.clientHeight);renderer.shadowMap.enabled=true;renderer.shadowMap.type=THREE.PCFSoftShadowMap;renderer.outputColorSpace=THREE.SRGBColorSpace;stage.prepend(renderer.domElement);
+const renderer=new THREE.WebGLRenderer({antialias:true,alpha:true,preserveDrawingBuffer:true});renderer.setPixelRatio(Math.min(devicePixelRatio,2));renderer.setSize(stage.clientWidth,stage.clientHeight);renderer.shadowMap.enabled=true;renderer.shadowMap.type=THREE.PCFSoftShadowMap;renderer.outputColorSpace=THREE.SRGBColorSpace;
+renderer.toneMapping=THREE.ACESFilmicToneMapping;renderer.toneMappingExposure=1.18;
+const reflectionGenerator=new THREE.PMREMGenerator(renderer);
+scene.environment=reflectionGenerator.fromScene(new RoomEnvironment(),.04).texture;
+stage.prepend(renderer.domElement);
 const labelRenderer=new CSS2DRenderer();labelRenderer.setSize(stage.clientWidth,stage.clientHeight);labelRenderer.domElement.style.position='absolute';labelRenderer.domElement.style.top='0';labelRenderer.domElement.style.pointerEvents='none';stage.appendChild(labelRenderer.domElement);
 const ctl=new OrbitControls(camera,renderer.domElement);ctl.target.set(50,0,50);ctl.enableDamping=true;ctl.maxPolarAngle=Math.PI/2-0.03;ctl.minDistance=45;ctl.maxDistance=330;ctl.update();
-scene.add(new THREE.HemisphereLight(0xcfefff,0x354c40,2.05));const sun=new THREE.DirectionalLight(0xffffff,2.5);sun.position.set(65,125,20);sun.castShadow=true;sun.shadow.mapSize.set(2048,2048);sun.shadow.camera.left=-100;sun.shadow.camera.right=100;sun.shadow.camera.top=100;sun.shadow.camera.bottom=-100;scene.add(sun);
+const hemi=new THREE.HemisphereLight(0xd3e8f5,0x6f745f,1.17);scene.add(hemi);
+const sun=new THREE.DirectionalLight(0xfff1d5,2.5);sun.position.set(100,145,15);sun.castShadow=true;
+sun.shadow.mapSize.set(2048,2048);sun.shadow.camera.left=-170;sun.shadow.camera.right=170;sun.shadow.camera.top=170;sun.shadow.camera.bottom=-170;
+sun.shadow.camera.near=10;sun.shadow.camera.far=450;sun.shadow.normalBias=.024;sun.shadow.radius=2.0;
+sun.target.position.set(50,0,50);scene.add(sun.target);scene.add(sun);
+
+function proceduralTexture(kind,size=256){
+ const cv=document.createElement('canvas');cv.width=cv.height=size;const ctx=cv.getContext('2d');
+ const rgb=kind==='concrete'?[186,189,185]:kind==='grass'?[121,149,99]:kind==='soil'?[145,132,103]:[169,176,175];
+ ctx.fillStyle='rgb('+rgb.join(',')+')';ctx.fillRect(0,0,size,size);
+ let seed=kind.length*16321+size;const random=()=>{seed=(1664525*seed+1013904223)>>>0;return seed/4294967296;};
+ for(let i=0;i<6500;i++){
+  const a=.025+random()*.19;
+  ctx.fillStyle=random()>.52?'rgba(255,255,255,'+a+')':'rgba(20,27,27,'+a+')';
+  const px=random()*size,py=random()*size,s=.2+random()*1.8;ctx.fillRect(px,py,s,s);
+ }
+ if(kind==='concrete'){ctx.lineWidth=.7;ctx.strokeStyle='rgba(57,65,65,.18)';
+ for(let q=1;q<4;q++){ctx.beginPath();ctx.moveTo(q*size/4,0);ctx.lineTo(q*size/4,size);ctx.stroke();
+ ctx.beginPath();ctx.moveTo(0,q*size/4);ctx.lineTo(size,q*size/4);ctx.stroke();}}
+ if(kind==='steel'){ctx.fillStyle='rgba(238,240,241,.07)';for(let y=0;y<size;y+=19)ctx.fillRect(0,y,size,2);}
+ const texture=new THREE.CanvasTexture(cv);texture.colorSpace=THREE.SRGBColorSpace;texture.wrapS=texture.wrapT=THREE.RepeatWrapping;
+ texture.anisotropy=Math.min(8,renderer.capabilities.getMaxAnisotropy());return texture;
+}
+const proceduralMaps={concrete:proceduralTexture('concrete'),grass:proceduralTexture('grass'),soil:proceduralTexture('soil'),steel:proceduralTexture('steel')};
+function texturedMaterial(color,kind='concrete',metalness=0,roughness=.86,repeatX=1,repeatY=1){
+ const map=proceduralMaps[kind].clone();map.needsUpdate=true;map.repeat.set(repeatX,repeatY);
+ return new THREE.MeshStandardMaterial({color,map,metalness,roughness,side:THREE.DoubleSide});
+}
+
 const mat=(color,opacity=1)=>new THREE.MeshStandardMaterial({color,transparent:opacity<1,opacity,roughness:0.68,metalness:0.08,side:THREE.DoubleSide});
-const ground=new THREE.Mesh(new THREE.PlaneGeometry(114,114),mat(0x142d36));ground.rotation.x=-Math.PI/2;ground.position.set(50,-0.09,50);ground.receiveShadow=true;scene.add(ground);
+const ground=new THREE.Mesh(new THREE.PlaneGeometry(114,114),texturedMaterial(0xdfe2dd,'concrete',0,.94,10,10));ground.rotation.x=-Math.PI/2;ground.position.set(50,-0.09,50);ground.receiveShadow=true;scene.add(ground);
 const grid=new THREE.GridHelper(100,20,0x45616c,0x2d4956);grid.position.set(50,-0.02,50);scene.add(grid);
 const boundary=new THREE.LineSegments(new THREE.EdgesGeometry(new THREE.BoxGeometry(100,0.13,100)),new THREE.LineBasicMaterial({color:0xa9d8d1}));boundary.position.set(50,0,50);scene.add(boundary);
 const surroundings=new THREE.Group();scene.add(surroundings);
-let environmentMode='engineering';
+let environmentMode='engineering';let qualityMode='fast';
 const dynamic=new THREE.Group();scene.add(dynamic);const zoneGroup=new THREE.Group();dynamic.add(zoneGroup);const equipmentGroup=new THREE.Group();dynamic.add(equipmentGroup);const labelsGroup=new THREE.Group();dynamic.add(labelsGroup);
 
 // A deterministic, lightweight procedural landscape. Everything outside
 // the 100x100 m boundary is illustrative and never alters equipment scale.
-const envMaterial=(color)=>new THREE.MeshStandardMaterial({color,roughness:.95,metalness:0});
+const envMaterial=(color)=>texturedMaterial(color,'grass',0,.97);
 function envRect(group,x,z,w,d,y,color){
- const mesh=new THREE.Mesh(new THREE.BoxGeometry(w,.12,d),envMaterial(color));
+ const hard=[0x666f72,0x626d70,0x818889,0x8b8e81,0x999f9f,0xa6a7a0].includes(color);
+ const material=texturedMaterial(color,hard?'concrete':'grass',0,.98,Math.max(1,w/12),Math.max(1,d/12));
+ const mesh=new THREE.Mesh(new THREE.BoxGeometry(w,.12,d),material);
  mesh.position.set(x,y,z);mesh.receiveShadow=true;group.add(mesh);return mesh;
 }
 function envCylinder(group,x,y,z,r,h,color,segments=9){
@@ -60,22 +96,26 @@ function envCylinder(group,x,y,z,r,h,color,segments=9){
  mesh.position.set(x,y,z);group.add(mesh);return mesh;
 }
 function envTree(group,x,z,height=7,type='palm'){
- const trunk=envCylinder(group,x,height*.27,z,type==='palm'?.17:.28,height*.54,0x78604a,7);
  if(type==='palm'){
-  for(let k=0;k<7;k++){
-   const a=k*Math.PI*2/7,leafLen=height*.47;
-   const origin=new THREE.Vector3(x,height*.56,z);
-   const tip=new THREE.Vector3(x+Math.cos(a)*leafLen,height*.39,z+Math.sin(a)*leafLen);
-   const vec=tip.clone().sub(origin);
-   const blade=new THREE.Mesh(new THREE.ConeGeometry(.45,vec.length(),5),envMaterial(k%2?0x397a42:0x448849));
-   blade.position.copy(origin).add(tip).multiplyScalar(.5);
-   blade.quaternion.setFromUnitVectors(new THREE.Vector3(0,1,0),vec.normalize());
-   group.add(blade);
+  const points=[];for(let k=0;k<=8;k++){let q=k/8;points.push(new THREE.Vector3(x+.25*q*q,height*.69*q,z+.1*q));}
+  const trunk=new THREE.Mesh(new THREE.TubeGeometry(new THREE.CatmullRomCurve3(points),14,.17,7,false),envMaterial(0x786048));group.add(trunk);
+  const center=points[8],palette=[0x456e3c,0x578447,0x426e42,0x689443];
+  for(let k=0;k<10;k++){
+   const a=k*2*Math.PI/10,len=height*(.38+(k%3)*.025),v=[],faces=[];
+   for(let q=0;q<=10;q++){
+    const t=q/10,dist=t*len,wide=Math.sin(Math.PI*t)*height*.055;
+    const xx=center.x+Math.cos(a)*dist,zz=center.z+Math.sin(a)*dist,yy=center.y+height*(.16*t-.34*t*t);
+    v.push(xx-Math.sin(a)*wide,yy,zz+Math.cos(a)*wide,xx+Math.sin(a)*wide,yy,zz-Math.cos(a)*wide);
+    if(q<10){const j=2*q;faces.push(j,j+1,j+2,j+1,j+3,j+2);}
+   }
+   const g=new THREE.BufferGeometry();g.setAttribute('position',new THREE.Float32BufferAttribute(v,3));g.setIndex(faces);g.computeVertexNormals();
+   group.add(new THREE.Mesh(g,new THREE.MeshStandardMaterial({color:palette[k%palette.length],side:THREE.DoubleSide,roughness:.88})));
   }
  }else{
-  for(const [dx,dy,dz,r] of [[0,.65,0,.24],[.8,.61,.2,.19],[-.7,.6,-.3,.18]]){
-   const crown=new THREE.Mesh(new THREE.IcosahedronGeometry(height*r,1),envMaterial(0x4a7d45));
-   crown.position.set(x+dx,height*dy,z+dz);group.add(crown);
+  envCylinder(group,x,height*.28,z,.22,height*.56,0x786048,9);
+  for(const [dx,dy,dz,r] of [[0,.67,0,.25],[.7,.6,.2,.18],[-.7,.59,-.3,.19],[.1,.83,0,.16]]){
+   const mesh=new THREE.Mesh(new THREE.IcosahedronGeometry(height*r,2),envMaterial(0x527c4c));
+   mesh.position.set(x+dx,height*dy,z+dz);group.add(mesh);
   }
  }
 }
@@ -137,8 +177,9 @@ function createSurroundings(kind){
  const fenceLines=new THREE.LineSegments(new THREE.BufferGeometry().setFromPoints(fencePoints),fenceMat);surroundings.add(fenceLines);
 }
 
-const box=(parent,x,z,w,d,h,c,y=0)=>{let o=new THREE.Mesh(new THREE.BoxGeometry(w,h,d),mat(c));o.position.set(x,y+h/2,z);o.castShadow=h>0.3;o.receiveShadow=true;parent.add(o);return o};
-const cylinder=(parent,x,z,r,h,c)=>{let o=new THREE.Mesh(new THREE.CylinderGeometry(r,r,h,48),mat(c));o.position.set(x,h/2,z);o.castShadow=true;o.receiveShadow=true;parent.add(o);return o};
+const box=(parent,x,z,w,d,h,c,y=0)=>{const finish=(h>.3 && parent===equipmentGroup && Math.max(w,d)>1.5)?texturedMaterial(c,'steel',.27,.66):mat(c);
+ let o=new THREE.Mesh(new THREE.BoxGeometry(w,h,d),finish);o.position.set(x,y+h/2,z);o.castShadow=h>0.3;o.receiveShadow=true;parent.add(o);return o};
+const cylinder=(parent,x,z,r,h,c)=>{let o=new THREE.Mesh(new THREE.CylinderGeometry(r,r,h,48),texturedMaterial(c,'steel',.22,.62));o.position.set(x,h/2,z);o.castShadow=true;o.receiveShadow=true;parent.add(o);return o};
 const sphere=(parent,x,z,r,c,y=r)=>{const o=new THREE.Mesh(new THREE.SphereGeometry(r,36,22),mat(c,0.83));o.position.set(x,y,z);o.castShadow=true;parent.add(o);return o};
 const label=(txt,x,z,y)=>{let el=document.createElement('div');el.className='label';el.textContent=txt;let o=new CSS2DObject(el);o.position.set(x,y,z);labelsGroup.add(o);return o};
 const zone=(name,x,z,w,d,c)=>{let a=box(zoneGroup,x,z,w,d,0.09,c,0.02);a.material.transparent=true;a.material.opacity=.18;let e=new THREE.LineSegments(new THREE.EdgesGeometry(new THREE.BoxGeometry(w,0.12,d)),new THREE.LineBasicMaterial({color:c,transparent:true,opacity:.75}));e.position.set(x,.09,z);zoneGroup.add(e);return a};
@@ -154,10 +195,10 @@ const commonZones=[
 const steel=0xc8d2d4, pipeColor=0x94c2be;
 const beam=(x1,y1,z1,x2,y2,z2,r=0.12,c=pipeColor,parent=equipmentGroup)=>{
   const a=new THREE.Vector3(x1,y1,z1), b=new THREE.Vector3(x2,y2,z2),dif=b.clone().sub(a);
-  const o=new THREE.Mesh(new THREE.CylinderGeometry(r,r,dif.length(),8),mat(c));o.position.copy(a.add(b).multiplyScalar(.5));o.quaternion.setFromUnitVectors(new THREE.Vector3(0,1,0),dif.normalize());parent.add(o);return o;
+  const o=new THREE.Mesh(new THREE.CylinderGeometry(r,r,dif.length(),8),new THREE.MeshStandardMaterial({color:c,roughness:.38,metalness:.68}));o.position.copy(a.add(b).multiplyScalar(.5));o.quaternion.setFromUnitVectors(new THREE.Vector3(0,1,0),dif.normalize());parent.add(o);return o;
 };
 const torus=(x,y,z,r,c,thickness=.08)=>{
-  const o=new THREE.Mesh(new THREE.TorusGeometry(r,thickness,6,64),mat(c));o.rotation.x=Math.PI/2;o.position.set(x,y,z);equipmentGroup.add(o);return o;
+  const o=new THREE.Mesh(new THREE.TorusGeometry(r,thickness,6,64),new THREE.MeshStandardMaterial({color:c,roughness:.36,metalness:.68}));o.rotation.x=Math.PI/2;o.position.set(x,y,z);equipmentGroup.add(o);return o;
 };
 const slab=(x,z,w,d)=>box(equipmentGroup,x,z,w,d,.18,0x8b989c,0);
 function corrugated(x,z,w,d,h,c){
@@ -445,6 +486,16 @@ function chooseEnvironment(value){
 }
 Object.entries(environmentButtons).forEach(([key,button])=>button.onclick=()=>chooseEnvironment(key));
 chooseEnvironment('engineering');
+const qualityButtons={fast:document.getElementById('quality-fast'),high:document.getElementById('quality-high')};
+function setRenderQuality(value){
+ qualityMode=value;renderer.setPixelRatio(value==='high'?Math.min(devicePixelRatio,2):Math.min(devicePixelRatio,1.25));
+ const shadowSize=value==='high'?4096:2048;
+ sun.shadow.mapSize.set(shadowSize,shadowSize);if(sun.shadow.map){sun.shadow.map.dispose();sun.shadow.map=null;}
+ sun.shadow.needsUpdate=true;renderer.toneMappingExposure=value==='high'?1.2:1.13;
+ Object.entries(qualityButtons).forEach(([key,b])=>b.classList.toggle('active',key===value));
+}
+Object.entries(qualityButtons).forEach(([key,b])=>b.onclick=()=>setRenderQuality(key));
+setRenderQuality('fast');
 document.getElementById('dry').onclick=()=>update('dry');document.getElementById('wet').onclick=()=>update('wet');
 const home=()=>{camera.position.set(121,126,146);ctl.target.set(50,0,50);ctl.update()};document.getElementById('reset').onclick=()=>{home();document.getElementById('orbit').classList.add('active');document.getElementById('plan').classList.remove('active')};
 document.getElementById('plan').onclick=()=>{camera.position.set(50.01,180,50);ctl.target.set(50,0,50);ctl.update();document.getElementById('plan').classList.add('active');document.getElementById('orbit').classList.remove('active')};
