@@ -82,3 +82,20 @@ python3 -m http.server 8000
 5. **8 字型環繞**：以雙葉形航線呈現近距離與遠距離視角。
 
 可設定 15／30／60 秒與低空／中空／高空；播放、暫停、重設及瀏覽器影片錄製沿用原有功能。錄製檔名會包含路徑識別字。攝影機路徑採概念性展示航線，**不是實際無人機飛行計畫**；部分路徑可能掠過虛擬設備或基地界線附近，後續可按展示需求微調關鍵影格。兩種厭氧處理方案均可使用，透明 PNG 截圖保留。
+
+
+## NVIDIA SimReady 網頁模型試用（2026-11-09）
+
+新增 **原始設備／NVIDIA 擬真素材** 切換。此版本是在不變更原工程幾何及設備數量的前提下，額外顯示三件外觀示範 GLB：
+
+| 資產 ID | 位置與用途 | 尺寸性質 |
+|---|---|---|
+| `conveyor_belt_a47` | 前處理區，輸送帶參考 | 預設外框約 4.4m，概念擺放 |
+| `box_corrugated_brown_b20` | 沼渣沼液暫存區，物流紙箱 | 預設外框約 1.35m，概念擺放 |
+| `rack_large_empty_a02` | 暫存區，工業置物架 | 預設外框約 3.9m，概念擺放 |
+
+**來源與著作權標示**：模型原著作人為 **NVIDIA SimReady**，原始資料：[nvidia/simready-assets](https://huggingface.co/datasets/nvidia/simready-assets)，授權 [Creative Commons Attribution 4.0](https://creativecommons.org/licenses/by/4.0/)；網頁優化版 GLB 由 **CodePawl** 轉換壓縮，來源：[codepawl/simready-glb](https://huggingface.co/datasets/codepawl/simready-glb)。本專案對 GLB 的展示尺寸與位置進行調整，並不表示它們是本案實際設備規格。
+
+此測試版透過 Hugging Face 的 `resolve/main/glb/<asset-id>.glb` 網址**按需載入**，不把大型檔案永久存進 GitHub。第一次切換需連網，遠端下載、跨來源政策或模型解析失敗時，保留原工程模型，不阻礙 3D 繞場與 PNG 截圖。這些連結的實際瀏覽器下載結果仍待實機驗證。
+
+正式採用前，建議下載並固定到本專案的 `assets/` 目錄，附檔案雜湊、授權及第三方署名，避免遠端資產修改或斷鏈。GLB 的模型尺寸只作視覺效果輔助，不能當成設計尺寸。
