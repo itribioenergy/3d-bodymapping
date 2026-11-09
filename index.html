@@ -219,10 +219,10 @@ function createSurroundings(kind){
 // Conversion / compression: https://huggingface.co/datasets/codepawl/simready-glb
 const simreadyCatalog=[
  // Confirmed NVIDIA SimReady asset IDs; all scaled to conceptual envelopes under 7.1m canopy.
- {id:'conveyor_belt_a47',label:'破碎後輸送帶',area:'pretreat',x:83.1,z:21.5,diameter:7.4,maxHeight:3.7,rotate:Math.PI*.5},
- {id:'conveyor_belt_a61',label:'混拌前轉運輸送帶',area:'pretreat',x:89.1,z:21.5,diameter:6.1,maxHeight:3.5,rotate:Math.PI*.5},
- {id:'equipment_liftTable_scissorMobile_a01',label:'升降工作台',area:'pretreat',x:77,z:26.5,diameter:3.0,maxHeight:2.15,rotate:0},
- {id:'palletJack_lowProfile_a01',label:'搬運設備',area:'pretreat',x:84,z:26.5,diameter:2.8,maxHeight:1.55,rotate:0},
+ {id:'conveyor_belt_a47',label:'破碎後輸送帶',area:'pretreat',x:88,z:21.5,diameter:7.0,maxHeight:3.7,rotate:Math.PI*1.5},
+ {id:'conveyor_belt_a61',label:'混拌前轉運輸送帶',area:'pretreat',x:82,z:21.5,diameter:6.0,maxHeight:3.5,rotate:Math.PI*1.5},
+ {id:'equipment_liftTable_scissorMobile_a01',label:'升降工作台',area:'pretreat',x:91,z:26.5,diameter:3.0,maxHeight:2.15,rotate:Math.PI},
+ {id:'palletJack_lowProfile_a01',label:'搬運設備',area:'pretreat',x:84,z:26.5,diameter:2.8,maxHeight:1.55,rotate:Math.PI},
  {id:'box_corrugated_brown_b20',label:'物流貨箱',area:'storage',x:77,z:82,diameter:2.2,maxHeight:1.8,rotate:0},
  {id:'rack_large_empty_a02',label:'工業置物架',area:'storage',x:83.5,z:82,diameter:4.8,maxHeight:3.2,rotate:Math.PI*.5}
 ];
@@ -627,22 +627,22 @@ function conceptPretreatmentMixer(x,z){
 
 const makeCommon=()=>{
  commonZones.forEach(a=>zone(a[0],a[1],a[2],a[3],a[4],colors[a[5]]));
- // Top-right: receiving, shredding, mixing; retain the approved equipment styles.
+ // Top-right: outdoor-facing loading at east, then westward shredding / transfer / mixing toward digesters.
  pretreatmentRoof=shed(84,21.5,25,13,7.1,0x728d91);
  pretreatmentRoof.visible=showPretreatmentRoof;
  // Actual-looking custom twin shaft shredder and covered mixing tank are
  // displayed in BOTH modes, while the simplified conveyor placeholder is the fallback.
- const shredder=conceptTwinShaftShredder(76.5,21.5);
+ const shredder=conceptTwinShaftShredder(93.7,21.5);
  shredder.scale.setScalar(1.22); // about 4.2m tall, with larger readable hopper
- const mixer=conceptPretreatmentMixer(94.0,21.5);
+ const mixer=conceptPretreatmentMixer(75.2,21.5);
  mixer.scale.setScalar(1.25); // about 4.5m high under 7.1m canopy
  const firstGeneric=equipmentGroup.children.length;
- box(equipmentGroup,83.1,21.5,5.6,1.25,1.95,0x6d888d,.55);
- box(equipmentGroup,89.1,21.5,4.6,1.25,1.95,0x477b83,.55);
- for(const x of [81.6,84.6,87.8,90.5])box(equipmentGroup,x,21.5,.14,1.45,.92,0x8da1a4,.16);
+ box(equipmentGroup,88,21.5,5.6,1.25,1.95,0x6d888d,.55);
+ box(equipmentGroup,82,21.5,4.6,1.25,1.95,0x477b83,.55);
+ for(const x of [79.6,82.4,86.1,89.0])box(equipmentGroup,x,21.5,.14,1.45,.92,0x8da1a4,.16);
  equipmentGroup.children.slice(firstGeneric).forEach(mesh=>{equipmentGroup.remove(mesh);pretreatmentOriginalGroup.add(mesh);});
  equipmentGroup.add(pretreatmentOriginalGroup);
- label('前處理：進料 → 雙軸破碎 → 輸送 → 混拌',84,21.5,9);
+ label('前處理：外側進料 → 雙軸破碎 → 輸送 → 內側混拌',84,21.5,9);
  // Middle-right: photo-reference polyethylene tanks and inclined stainless separator.
  shed(84,51.5,25,17,8.2,0x81999e);
  referencePlasticDigestateTank(76,51,2.2,5.4);
