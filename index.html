@@ -16,6 +16,14 @@
 <div id="tip"></div><div class="scale">操作：左鍵旋轉 · 滾輪縮放 · 右鍵平移<br>基地範圍 100 × 100 m｜所有主設備以真實公尺尺寸建模</div><div class="bottomkey">N ↑　概念配置，非施工圖</div><div id="error">3D 函式庫載入失敗。請確認網路連線，並透過本機 HTTP 伺服器或 GitHub Pages 開啟。</div>
 </main><aside class="side">
 <h2>厭氧設備形式</h2><div class="mode"><button id="dry" class="active">A · 乾式貨櫃型</button><button id="wet">B · 攪拌槽型</button></div>
+<h3>攝影機繞場動畫</h3>
+<div class="mode" style="flex-wrap:wrap"><button id="tour-play">▶ 開始繞場</button><button id="tour-reset">↺ 重設</button><button id="tour-record">● 錄製影片</button></div>
+<div class="mode" style="margin-top:9px;flex-wrap:wrap">
+<label for="tour-duration" style="font-size:11px;align-self:center">每圈</label>
+<select id="tour-duration" aria-label="繞場時間" style="flex:1;min-width:76px;background:#142d39;color:#d9f4f4;border:1px solid #355566;border-radius:8px;padding:8px"><option value="15">15 秒</option><option value="30" selected>30 秒</option><option value="60">60 秒</option></select>
+<label for="tour-height" style="font-size:11px;align-self:center">高度</label>
+<select id="tour-height" aria-label="攝影機高度" style="flex:1;min-width:76px;background:#142d39;color:#d9f4f4;border:1px solid #355566;border-radius:8px;padding:8px"><option value="low">低空</option><option value="mid" selected>中空</option><option value="high">高空</option></select></div>
+<p id="tour-status" class="note" role="status">環繞中心：基地中央｜30 秒一圈｜錄影輸出依瀏覽器支援格式（WebM／MP4）</p>
 <h3>周邊環境</h3>
 <div class="mode envmode" style="flex-wrap:wrap"><button id="env-farm">🌴 熱帶農田</button><button id="env-industrial">🏭 鄉村工業區</button><button id="env-engineering" class="active">工程配置</button></div>
 <p class="note">周邊環境為視覺示意，不佔用一公頃基地；切換環境不會改變設備位置、尺寸與計算。</p>
@@ -508,9 +516,129 @@ function setRenderQuality(value){
 Object.entries(qualityButtons).forEach(([key,b])=>b.onclick=()=>setRenderQuality(key));
 setRenderQuality('fast');
 document.getElementById('dry').onclick=()=>update('dry');document.getElementById('wet').onclick=()=>update('wet');
-const home=()=>{camera.position.set(121,126,146);ctl.target.set(50,0,50);ctl.update()};document.getElementById('reset').onclick=()=>{home();document.getElementById('orbit').classList.add('active');document.getElementById('plan').classList.remove('active')};
-document.getElementById('plan').onclick=()=>{camera.position.set(50.01,180,50);ctl.target.set(50,0,50);ctl.update();document.getElementById('plan').classList.add('active');document.getElementById('orbit').classList.remove('active')};
-document.getElementById('orbit').onclick=()=>{home();document.getElementById('orbit').classList.add('active');document.getElementById('plan').classList.remove('active')};
+const home=()=>{camera.position.set(121,126,146);ctl.target.set(50,0,50);ctl.update()};
+
+const tourPlay=document.getElementById('tour-play');
+const tourRecord=document.getElementById('tour-record');
+const tourReset=document.getElementById('tour-reset');
+const tourDuration=document.getElementById('tour-duration');
+const tourHeight=document.getElementById('tour-height');
+const tourStatus=document.getElementById('tour-status');
+const tourCenter=new THREE.Vector3(50,0,50);
+let tourRunning=false,tourElapsed=0,tourLastTime=0;
+let recorder=null,recordStream=null,recordPieces=[],recording=false,recordCompleted=false;
+let recordFrames=0,recordExtension='webm';
+let tourStartAngle=Math.atan2(146-50,121-50);
+const TWO_PI=Math.PI*2;
+function tourSettings(){
+ const duration=Number(tourDuration.value)||30;
+ const config={
+  low:{radius:112,y:44,lookY:6},
+  mid:{radius:145,y:96,lookY:3},
+  high:{radius:170,y:154,lookY:0}
+ }[tourHeight.value]||{radius:145,y:96,lookY:3};
+ return {duration,...config};
+}
+function setTourCamera(){
+ const p=tourSettings(),theta=tourStartAngle+TWO_PI*(tourElapsed/p.duration);
+ camera.position.set(tourCenter.x+p.radius*Math.cos(theta),p.y,tourCenter.z+p.radius*Math.sin(theta));
+ ctl.target.set(tourCenter.x,p.lookY,tourCenter.z);
+ camera.lookAt(ctl.target);ctl.update();
+}
+function refreshTourUI(message){
+ tourPlay.textContent=tourRunning?'⏸ 暫停繞場':'▶ 開始繞場';
+ tourRecord.textContent=recording?'■ 停止錄製':'● 錄製影片';
+ tourHeight.disabled=recording;tourDuration.disabled=recording;
+ document.getElementById('orbit').classList.toggle('active',!tourRunning);
+ document.getElementById('plan').classList.remove('active');
+ const p=tourSettings();
+ tourStatus.textContent=message||('繞場 '+tourElapsed.toFixed(1)+' / '+p.duration+' 秒'+(recording?'｜錄影中':''));
+}
+function startTour(fromBeginning=false){
+ if(fromBeginning)tourElapsed=0;
+ tourLastTime=0;tourRunning=true;ctl.enabled=false;setTourCamera();refreshTourUI();
+}
+function pauseTour(){tourRunning=false;tourLastTime=0;ctl.enabled=true;refreshTourUI();}
+function stopRecording(){
+ if(!recording)return;
+ recording=false;
+ if(recorder&&recorder.state!=='inactive')recorder.stop();
+ tourRunning=false;tourLastTime=0;ctl.enabled=true;
+ refreshTourUI('正在整理影片檔案…');
+}
+function resetTour(){
+ if(recording)stopRecording();
+ else pauseTour();
+ tourElapsed=0;
+ home();
+ refreshTourUI('已重設視角｜選擇開始繞場即可播放');
+}
+function recorderFormat(){
+ if(!window.MediaRecorder)return null;
+ const types=[
+  ['video/mp4;codecs=avc1.42E01E','mp4'],
+  ['video/webm;codecs=vp9','webm'],
+  ['video/webm;codecs=vp8','webm'],
+  ['video/webm','webm'],
+  ['video/mp4','mp4']
+ ];
+ for(const [mime,ext] of types){
+  if(MediaRecorder.isTypeSupported(mime))return {mime,ext};
+ }
+ return null;
+}
+function recordTour(){
+ if(recording){stopRecording();return;}
+ const fmt=recorderFormat();
+ if(!fmt||!renderer.domElement.captureStream){
+  tourStatus.textContent='此瀏覽器不支援 Canvas 錄影，請使用最新版 Chrome、Edge 或 Safari。';
+  return;
+ }
+ try{
+  // Capture exactly what is rendered inside the WebGL canvas, without UI overlays.
+  recordStream=renderer.domElement.captureStream(30);
+  recordPieces=[];recordFrames=0;recordExtension=fmt.ext;
+  recorder=new MediaRecorder(recordStream,{mimeType:fmt.mime,videoBitsPerSecond:8500000});
+  recorder.ondataavailable=e=>{if(e.data&&e.data.size>0)recordPieces.push(e.data);};
+  recorder.onerror=e=>{tourStatus.textContent='影片錄製失敗，請檢查瀏覽器錄影權限。';console.error(e);stopRecording();};
+  recorder.onstop=()=>{
+   const chunks=recordPieces.slice();recordPieces=[];
+   if(recordStream){recordStream.getTracks().forEach(track=>track.stop());recordStream=null;}
+   if(chunks.length){
+    const blob=new Blob(chunks,{type:recorder.mimeType||fmt.mime});
+    const url=URL.createObjectURL(blob);
+    const a=document.createElement('a');
+    a.href=url;a.download='biogas-'+mode+'-'+environmentMode+'-orbit-'+tourDuration.value+'s.'+recordExtension;
+    document.body.appendChild(a);a.click();a.remove();
+    setTimeout(()=>URL.revokeObjectURL(url),30000);
+    tourStatus.textContent='影片已產生並啟動下載（'+recordExtension.toUpperCase()+'）';
+   } else {tourStatus.textContent='沒有錄製到影片畫面，請重試。';}
+  };
+  tourElapsed=0;
+  setTourCamera();renderer.render(scene,camera);
+  recorder.start(250);
+  recording=true;recordCompleted=false;
+  startTour(true);
+ }catch(error){
+  console.error(error);
+  if(recordStream)recordStream.getTracks().forEach(t=>t.stop());
+  recordStream=null;recorder=null;recording=false;
+  tourStatus.textContent='無法啟動錄製：'+error.message;
+ }
+}
+tourPlay.onclick=()=>{
+ if(recording){tourStatus.textContent='錄影期間請使用「停止錄製」結束。';return;}
+ if(tourRunning)pauseTour();else startTour(tourElapsed>=tourSettings().duration);
+};
+tourRecord.onclick=recordTour;
+tourReset.onclick=resetTour;
+tourDuration.onchange=()=>{tourElapsed=0;if(tourRunning)setTourCamera();refreshTourUI();};
+tourHeight.onchange=()=>{if(tourRunning)setTourCamera();refreshTourUI();};
+// User camera operations cancel auto-orbit, preserving manual orbit functionality.
+renderer.domElement.addEventListener('pointerdown',()=>{if(tourRunning&&!recording)pauseTour();});
+document.getElementById('reset').onclick=()=>{if(tourRunning)pauseTour();home();document.getElementById('orbit').classList.add('active');document.getElementById('plan').classList.remove('active')};
+document.getElementById('plan').onclick=()=>{if(tourRunning)pauseTour();camera.position.set(50.01,180,50);ctl.target.set(50,0,50);ctl.update();document.getElementById('plan').classList.add('active');document.getElementById('orbit').classList.remove('active')};
+document.getElementById('orbit').onclick=()=>{if(tourRunning)pauseTour();home();document.getElementById('orbit').classList.add('active');document.getElementById('plan').classList.remove('active')};
 document.getElementById('labels').onclick=()=>{labelsVisible=!labelsVisible;labelsGroup.visible=labelsVisible;document.getElementById('labels').classList.toggle('active',labelsVisible)};
 document.getElementById('zones').onclick=()=>{zonesVisible=!zonesVisible;zoneGroup.visible=zonesVisible;document.getElementById('zones').classList.toggle('active',zonesVisible)};
 
@@ -544,5 +672,20 @@ function exportImage(includeScene){
 document.getElementById('screenshot').onclick=()=>exportImage(false);
 document.getElementById('scene-shot').onclick=()=>exportImage(true);
 window.addEventListener('resize',()=>{camera.aspect=stage.clientWidth/stage.clientHeight;camera.updateProjectionMatrix();renderer.setSize(stage.clientWidth,stage.clientHeight);labelRenderer.setSize(stage.clientWidth,stage.clientHeight)});
-function render(){requestAnimationFrame(render);ctl.update();renderer.render(scene,camera);labelRenderer.render(scene,camera)}render();
+function render(now){
+ requestAnimationFrame(render);
+ if(tourRunning){
+  if(!tourLastTime)tourLastTime=now;
+  const delta=Math.min(.08,Math.max(0,(now-tourLastTime)/1000));
+  tourLastTime=now;
+  tourElapsed=Math.min(tourSettings().duration,tourElapsed+delta);
+  setTourCamera();
+  if(tourElapsed>=tourSettings().duration){
+   if(recording)stopRecording();else pauseTour();
+  }
+  if(Math.floor(now/250)!==Math.floor((now-16)/250)&&tourRunning)refreshTourUI();
+ }
+ ctl.update();renderer.render(scene,camera);labelRenderer.render(scene,camera);
+}
+requestAnimationFrame(render);
 </script></body></html>
