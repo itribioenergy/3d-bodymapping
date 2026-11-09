@@ -16,10 +16,18 @@
 <div id="tip"></div><div class="scale">操作：左鍵旋轉 · 滾輪縮放 · 右鍵平移<br>基地範圍 100 × 100 m｜所有主設備以真實公尺尺寸建模</div><div class="bottomkey">N ↑　概念配置，非施工圖</div><div id="error">3D 函式庫載入失敗。請確認網路連線，並透過本機 HTTP 伺服器或 GitHub Pages 開啟。</div>
 </main><aside class="side">
 <h2>厭氧設備形式</h2><div class="mode"><button id="dry" class="active">A · 乾式貨櫃型</button><button id="wet">B · 攪拌槽型</button></div>
-<h3>攝影機繞場動畫</h3>
-<div class="mode" style="flex-wrap:wrap"><button id="tour-play">▶ 開始繞場</button><button id="tour-reset">↺ 重設</button><button id="tour-record">● 錄製影片</button></div>
+<h3>攝影機動畫路徑</h3>
+<div class="mode"><select id="tour-path" aria-label="選擇攝影機路徑" style="width:100%;background:#142d39;color:#d9f4f4;border:1px solid #355566;border-radius:8px;padding:10px">
+<option value="orbit">① 360° 全場環繞</option>
+<option value="flyover">② 無人機低空巡場</option>
+<option value="overview">③ 俯視掃描全場</option>
+<option value="equipment">④ 重點設備導覽</option>
+<option value="figure8">⑤ 8 字型環繞</option>
+</select></div>
+<p class="note" id="path-description">圍繞整座案場一圈，適合投資簡報全景展示。</p>
+<div class="mode" style="flex-wrap:wrap"><button id="tour-play">▶ 播放動畫</button><button id="tour-reset">↺ 重設</button><button id="tour-record">● 錄製影片</button></div>
 <div class="mode" style="margin-top:9px;flex-wrap:wrap">
-<label for="tour-duration" style="font-size:11px;align-self:center">每圈</label>
+<label for="tour-duration" style="font-size:11px;align-self:center">時長</label>
 <select id="tour-duration" aria-label="繞場時間" style="flex:1;min-width:76px;background:#142d39;color:#d9f4f4;border:1px solid #355566;border-radius:8px;padding:8px"><option value="15">15 秒</option><option value="30" selected>30 秒</option><option value="60">60 秒</option></select>
 <label for="tour-height" style="font-size:11px;align-self:center">高度</label>
 <select id="tour-height" aria-label="攝影機高度" style="flex:1;min-width:76px;background:#142d39;color:#d9f4f4;border:1px solid #355566;border-radius:8px;padding:8px"><option value="low">低空</option><option value="mid" selected>中空</option><option value="high">高空</option></select></div>
@@ -520,6 +528,15 @@ setRenderQuality('fast');
 document.getElementById('dry').onclick=()=>update('dry');document.getElementById('wet').onclick=()=>update('wet');
 const home=()=>{camera.position.set(121,126,146);ctl.target.set(50,0,50);ctl.update()};
 
+const tourPath=document.getElementById('tour-path');
+const pathDescription=document.getElementById('path-description');
+const pathDescriptions={
+ orbit:'圍繞整座案場一圈，適合投資簡報全景展示。',
+ flyover:'低空從廠區入口掠過設備，再抬升回到全場。',
+ overview:'從高空斜視逐步掃描廠區，方便比較整體配置。',
+ equipment:'依序觀看前處理、厭氧反應器、儲氣、脫硫、發電及沼渣處理。',
+ figure8:'以平順的 8 字航線繞行兩側，提供不同近景與遠景。'
+};
 const tourPlay=document.getElementById('tour-play');
 const tourRecord=document.getElementById('tour-record');
 const tourReset=document.getElementById('tour-reset');
@@ -541,20 +558,78 @@ function tourSettings(){
  }[tourHeight.value]||{radius:145,y:96,lookY:3};
  return {duration,...config};
 }
+
+const cameraPaths={
+ flyover:[
+  [[50,70,156],[50,0,52]],
+  [[54,42,117],[50,3,56]],
+  [[54,37,79],[53,3,60]],
+  [[48,36,35],[42,6,34]],
+  [[35,49,-22],[45,2,28]],
+  [[82,65,-25],[65,3,46]],
+  [[131,94,60],[50,3,50]]
+ ],
+ overview:[
+  [[-20,130,125],[50,0,50]],
+  [[40,145,111],[50,0,51]],
+  [[128,135,100],[52,0,52]],
+  [[117,130,18],[50,0,48]],
+  [[49,142,-20],[50,0,50]],
+  [[-20,130,125],[50,0,50]]
+ ],
+ equipment:[
+  [[124,74,110],[50,0,50]],
+  [[116,36,2],[84,4,22]], // pretreatment
+  [[27,42,-19],[37,4,31]], // digesters
+  [[-2,48,103],[53,4,79]], // gas holders
+  [[-5,38,123],[31,9,82]], // desulfurization
+  [[-12,36,105],[13,3,82]], // generator
+  [[117,39,119],[84,4,52]], // digestate processing
+  [[125,93,128],[50,0,50]]
+ ]
+};
+const smoothstep=v=>v*v*(3-2*v);
+const cameraPoint=(xyz)=>new THREE.Vector3(...xyz);
 function setTourCamera(){
- const p=tourSettings(),theta=tourStartAngle+TWO_PI*(tourElapsed/p.duration);
- camera.position.set(tourCenter.x+p.radius*Math.cos(theta),p.y,tourCenter.z+p.radius*Math.sin(theta));
- ctl.target.set(tourCenter.x,p.lookY,tourCenter.z);
- camera.lookAt(ctl.target);ctl.update();
+ const p=tourSettings();
+ const fraction=Math.min(1,tourElapsed/p.duration);
+ const type=tourPath.value;
+ let position,target;
+ if(type==='orbit'){
+  const theta=tourStartAngle+TWO_PI*fraction;
+  position=new THREE.Vector3(50+p.radius*Math.cos(theta),p.y,50+p.radius*Math.sin(theta));
+  target=new THREE.Vector3(50,p.lookY,50);
+ }else if(type==='figure8'){
+  // Two broad lobes surrounding the plant, with a figure-eight crossover.
+  const t=TWO_PI*fraction;
+  const x=50+110*Math.sin(t),z=50+67*Math.sin(2*t);
+  position=new THREE.Vector3(x,p.y*.8+15+6*Math.cos(2*t),z);
+  target=new THREE.Vector3(50,4,50);
+ }else{
+  const points=cameraPaths[type]||cameraPaths.flyover;
+  const span=(points.length-1)*fraction;
+  const index=Math.min(points.length-2,Math.floor(span));
+  const blend=smoothstep(span-index);
+  position=cameraPoint(points[index][0]).lerp(cameraPoint(points[index+1][0]),blend);
+  target=cameraPoint(points[index][1]).lerp(cameraPoint(points[index+1][1]),blend);
+  // Scale the reference cinematic height relative to the chosen camera-altitude preset.
+  const base=96,heightFactor=({low:.58,mid:1,high:1.38}[tourHeight.value]||1);
+  position.y=Math.max(17,position.y*heightFactor);
+ }
+ camera.position.copy(position);
+ ctl.target.copy(target);
+ camera.lookAt(target);
+ // With camera controls disabled during playback the target does not drift.
+ ctl.update();
 }
 function refreshTourUI(message){
- tourPlay.textContent=tourRunning?'⏸ 暫停繞場':'▶ 開始繞場';
+ tourPlay.textContent=tourRunning?'⏸ 暫停動畫':'▶ 播放動畫';
  tourRecord.textContent=recording?'■ 停止錄製':'● 錄製影片';
- tourHeight.disabled=recording;tourDuration.disabled=recording;
+ tourHeight.disabled=recording;tourDuration.disabled=recording;tourPath.disabled=recording;
  document.getElementById('orbit').classList.toggle('active',!tourRunning);
  document.getElementById('plan').classList.remove('active');
  const p=tourSettings();
- tourStatus.textContent=message||('繞場 '+tourElapsed.toFixed(1)+' / '+p.duration+' 秒'+(recording?'｜錄影中':''));
+ tourStatus.textContent=message||('動畫 '+tourElapsed.toFixed(1)+' / '+p.duration+' 秒'+(recording?'｜錄影中':''));
 }
 function startTour(fromBeginning=false){
  if(fromBeginning)tourElapsed=0;
@@ -573,7 +648,7 @@ function resetTour(){
  else pauseTour();
  tourElapsed=0;
  home();
- refreshTourUI('已重設視角｜選擇開始繞場即可播放');
+ refreshTourUI('已重設視角｜選擇路徑後可播放動畫');
 }
 function recorderFormat(){
  if(!window.MediaRecorder)return null;
@@ -610,7 +685,7 @@ function recordTour(){
     const blob=new Blob(chunks,{type:recorder.mimeType||fmt.mime});
     const url=URL.createObjectURL(blob);
     const a=document.createElement('a');
-    a.href=url;a.download='biogas-'+mode+'-'+environmentMode+'-orbit-'+tourDuration.value+'s.'+recordExtension;
+    a.href=url;a.download='biogas-'+mode+'-'+environmentMode+'-'+tourPath.value+'-'+tourDuration.value+'s.'+recordExtension;
     document.body.appendChild(a);a.click();a.remove();
     setTimeout(()=>URL.revokeObjectURL(url),30000);
     tourStatus.textContent='影片已產生並啟動下載（'+recordExtension.toUpperCase()+'）';
@@ -636,6 +711,12 @@ tourRecord.onclick=recordTour;
 tourReset.onclick=resetTour;
 tourDuration.onchange=()=>{tourElapsed=0;if(tourRunning)setTourCamera();refreshTourUI();};
 tourHeight.onchange=()=>{if(tourRunning)setTourCamera();refreshTourUI();};
+tourPath.onchange=()=>{
+ if(recording)return;
+ tourElapsed=0;pathDescription.textContent=pathDescriptions[tourPath.value]||'';
+ if(tourRunning)setTourCamera();
+ refreshTourUI('已切換路徑：'+tourPath.options[tourPath.selectedIndex].text);
+};
 // User camera operations cancel auto-orbit, preserving manual orbit functionality.
 renderer.domElement.addEventListener('pointerdown',()=>{if(tourRunning&&!recording)pauseTour();});
 document.getElementById('reset').onclick=()=>{if(tourRunning)pauseTour();home();document.getElementById('orbit').classList.add('active');document.getElementById('plan').classList.remove('active')};
