@@ -37,6 +37,11 @@
 <div style="margin-top:8px"><label style="font-size:12px;cursor:pointer"><input type="checkbox" id="pretreat-roof"> 顯示前處理區屋頂（預設隱藏，便於檢視設備）</label></div>
 <p id="asset-status" class="note" role="status">前處理配置已調整為單一路徑：進料斗 → 雙軸破碎 → NVIDIA 輸送 → 混拌槽。屋頂預設隱藏方便檢視；設備為概念尺寸。</p>
 <p class="note">來源 NVIDIA SimReady（CC BY 4.0）；CodePawl 轉檔 GLB。遠端失敗時保留原始前處理機具，主要反應器不變。</p>
+<h3>人車動態展示</h3>
+<div class="mode"><button id="traffic-on" class="active">啟用人車</button><button id="traffic-off">停止顯示</button></div>
+<div class="mode"><button id="traffic-assets" class="active">GLB 素材優先</button><button id="traffic-simple">輕量示意</button></div>
+<p class="note" id="traffic-status" role="status">3 位巡檢人員與 1 輛卡車沿預設路線循環移動；GLB 載入失敗時使用輕量模型。</p>
+<p class="note">人物示範模型為 Three.js Soldier，貨車示範為 Khronos Cesium Milk Truck（不是正式廢棄物運輸車）。場內人車路徑僅供視覺展示，尚未核對車輛迴轉半徑。</p>
 <h3>周邊環境</h3>
 <div class="mode envmode" style="flex-wrap:wrap"><button id="env-farm">🌴 熱帶農田</button><button id="env-industrial">🏭 鄉村工業區</button><button id="env-engineering" class="active">工程配置</button></div>
 <p class="note">周邊環境為視覺示意，不佔用一公頃基地；切換環境不會改變設備位置、尺寸與計算。</p>
@@ -56,6 +61,7 @@ import {OrbitControls} from 'three/addons/controls/OrbitControls.js';
 import {CSS2DRenderer,CSS2DObject} from 'three/addons/renderers/CSS2DRenderer.js';
 import {RoomEnvironment} from 'three/addons/environments/RoomEnvironment.js';
 import {GLTFLoader} from 'three/addons/loaders/GLTFLoader.js';
+import {clone as cloneSkinned} from 'three/addons/utils/SkeletonUtils.js';
 import {MeshoptDecoder} from 'three/addons/libs/meshopt_decoder.module.js';
 const stage=document.getElementById('stage');
 const colors={dry:0x2ba991,wet:0x43aadd,pretreat:0xf0ab5e,storage:0xd7b982,process:0x8dbe92,gas:0x66d3da,desulf:0xa9a0f2,gen:0xf3c66a,liquid:0x86a4e8,road:0x415e6b};
@@ -765,6 +771,149 @@ function conceptPretreatmentMixer(x,z){
  return group;
 }
 
+
+/*
+ * Moving traffic is a separate scene layer. It survives both dry/wet rebuilds.
+ * External CC-BY demonstration assets are optional; all animations work offline
+ * with our own lightweight geometry if a GLB request fails.
+ */
+const trafficRoot=new THREE.Group();trafficRoot.name='Animated site activity';scene.add(trafficRoot);
+const pedestrianRoots=[],trafficMixers=[];
+let trafficEnabled=true,trafficAssetPreference=true,trafficLast=0,trafficTime=0;
+const trafficStatus=document.getElementById('traffic-status');
+const trafficLoader=new GLTFLoader();trafficLoader.setMeshoptDecoder(MeshoptDecoder);
+const sharedWorkers=new THREE.Group(),proceduralWorkers=new THREE.Group();
+trafficRoot.add(sharedWorkers,proceduralWorkers);
+const truckAnchor=new THREE.Group();trafficRoot.add(truckAnchor);
+const demoTruckAnchor=new THREE.Group(),simpleTruckAnchor=new THREE.Group();
+truckAnchor.add(demoTruckAnchor,simpleTruckAnchor);
+let workerReady=false,truckReady=false;
+const workerTrails=[
+ [[80,31],[86,31],[91,31],[91,33],[80,33]],
+ [[8,19],[8,33],[8,45],[8,33]],
+ [[21,76],[22,83],[20,91],[23,83]]
+];
+const vehicleTrail=[[96.5,4],[96.5,9],[96.5,16],[96.5,24],[96.5,30],[96.5,24],[96.5,16],[96.5,9],[96.5,4]];
+const workerAnchors=workerTrails.map((_,i)=>{const g=new THREE.Group();g.name='patrol worker '+(i+1);sharedWorkers.add(g);return g;});
+const workerFallback=workerTrails.map((_,i)=>{
+ const pivot=new THREE.Group(),material=new THREE.MeshStandardMaterial({color:i===0?0xe8b448:i===1?0xdad661:0xe09a52,roughness:.88});
+ function part(geometry,mat,x,y,z){const mesh=new THREE.Mesh(geometry,mat);mesh.position.set(x,y,z);mesh.castShadow=true;pivot.add(mesh);return mesh;}
+ part(new THREE.CylinderGeometry(.22,.26,.72,10),material,0,1.02,0);
+ part(new THREE.SphereGeometry(.165,10,8),new THREE.MeshStandardMaterial({color:0xb79573,roughness:1}),0,1.57,0);
+ part(new THREE.CylinderGeometry(.23,.23,.13,12),new THREE.MeshStandardMaterial({color:0xffce48,roughness:.8}),0,1.73,0);
+ const dark=new THREE.MeshStandardMaterial({color:0x343f47,roughness:.9});
+ const left=part(new THREE.BoxGeometry(.17,.59,.20),dark,-.13,.41,0),
+ right=part(new THREE.BoxGeometry(.17,.59,.20),dark,.13,.41,0);
+ const leftArm=part(new THREE.BoxGeometry(.13,.58,.17),material,-.31,1.0,0),
+ rightArm=part(new THREE.BoxGeometry(.13,.58,.17),material,.31,1.0,0);
+ proceduralWorkers.add(pivot);
+ return {pivot,left,right,leftArm,rightArm};
+});
+function buildSimpleTruck(){
+ const g=simpleTruckAnchor;
+ const steel=new THREE.MeshStandardMaterial({color:0xe1e5e1,metalness:.19,roughness:.72});
+ const cabin=new THREE.MeshStandardMaterial({color:0x6d8c7d,metalness:.25,roughness:.6});
+ const dark=new THREE.MeshStandardMaterial({color:0x222e30,roughness:.92});
+ const windowMat=new THREE.MeshStandardMaterial({color:0x314d60,metalness:.12,roughness:.45});
+ function cub(w,h,d,x,y,z,m){const o=new THREE.Mesh(new THREE.BoxGeometry(w,h,d),m);o.position.set(x,y,z);o.castShadow=true;g.add(o);return o;}
+ cub(2.6,.38,8.5,0,1.15,0,dark);
+ cub(2.5,2.05,5.0,0,2.32,.9,steel);
+ cub(2.35,2.18,2.75,0,2.2,-2.4,cabin);
+ cub(2.12,.83,.09,0,2.72,-3.82,windowMat);
+ cub(2.58,.25,1.2,0,1.18,-3.65,dark);
+ const wheels=[];
+ for(const x of [-1.36,1.36])for(const z of [-3.0,1.4,3.25]){
+  const tire=new THREE.Mesh(new THREE.CylinderGeometry(.58,.58,.30,18),dark);
+  tire.rotation.z=Math.PI/2;tire.position.set(x,.67,z);tire.castShadow=true;g.add(tire);wheels.push(tire);
+  const hub=new THREE.Mesh(new THREE.CylinderGeometry(.26,.26,.32,16),steel);
+  hub.rotation.z=Math.PI/2;hub.position.copy(tire.position);g.add(hub);
+ }
+ g.userData.wheels=wheels;
+}
+buildSimpleTruck();
+function positionAlongRoute(points,phase,root){
+ const total=points.length-1,amount=((phase%1)+1)%1*total;
+ const index=Math.min(total-1,Math.floor(amount)),blend=amount-index;
+ const a=points[index],b=points[index+1];
+ root.position.set(a[0]+(b[0]-a[0])*blend,.18,a[1]+(b[1]-a[1])*blend);
+ const dx=b[0]-a[0],dz=b[1]-a[1];
+ if(Math.abs(dx)+Math.abs(dz)>.01)root.rotation.y=Math.atan2(dx,dz);
+}
+function syncTrafficVisibility(){
+ trafficRoot.visible=trafficEnabled;
+ sharedWorkers.visible=trafficEnabled&&trafficAssetPreference&&workerReady;
+ proceduralWorkers.visible=trafficEnabled&&!(trafficAssetPreference&&workerReady);
+ demoTruckAnchor.visible=trafficEnabled&&trafficAssetPreference&&truckReady;
+ simpleTruckAnchor.visible=trafficEnabled&&!(trafficAssetPreference&&truckReady);
+ document.getElementById('traffic-on').classList.toggle('active',trafficEnabled);
+ document.getElementById('traffic-off').classList.toggle('active',!trafficEnabled);
+ document.getElementById('traffic-assets').classList.toggle('active',trafficAssetPreference);
+ document.getElementById('traffic-simple').classList.toggle('active',!trafficAssetPreference);
+ trafficStatus.textContent=!trafficEnabled?'人車動畫已隱藏。':
+  '3 位巡檢人員與 1 輛卡車循環運行｜人物：'+(workerReady&&trafficAssetPreference?'GLB 骨架動畫':'輕量人形')+
+  '｜卡車：'+(truckReady&&trafficAssetPreference?'Khronos 示範 GLB':'輕量運輸貨車')+'。';
+}
+document.getElementById('traffic-on').onclick=()=>{trafficEnabled=true;syncTrafficVisibility()};
+document.getElementById('traffic-off').onclick=()=>{trafficEnabled=false;syncTrafficVisibility()};
+document.getElementById('traffic-assets').onclick=()=>{trafficAssetPreference=true;syncTrafficVisibility()};
+document.getElementById('traffic-simple').onclick=()=>{trafficAssetPreference=false;syncTrafficVisibility()};
+syncTrafficVisibility();
+
+function loadTrafficAssets(){
+ // Soldier includes Walk, Idle and Run clips. Public MIT three.js example asset.
+ const soldierURL='https://raw.githubusercontent.com/mrdoob/three.js/dev/examples/models/gltf/Soldier.glb';
+ trafficLoader.load(soldierURL,gltf=>{
+  try{
+   const walk=(gltf.animations||[]).find(c=>/walk/i.test(c.name));
+   for(let i=0;i<3;i++){
+    const model=cloneSkinned(gltf.scene);model.updateMatrixWorld(true);
+    const bounds=new THREE.Box3().setFromObject(model),height=bounds.getSize(new THREE.Vector3()).y;
+    const scale=1.72/Math.max(height,.001);model.scale.multiplyScalar(scale);model.updateMatrixWorld(true);
+    const fitted=new THREE.Box3().setFromObject(model);
+    model.position.y-=fitted.min.y;
+    model.traverse(o=>{if(o.isMesh){o.castShadow=true;o.receiveShadow=true}});
+    workerAnchors[i].add(model);
+    if(walk){
+     const mixer=new THREE.AnimationMixer(model);mixer.clipAction(walk).play();
+     mixer.update(i*.47);trafficMixers.push(mixer);
+    }
+   }
+   workerReady=true;syncTrafficVisibility();
+  }catch(error){console.warn('Walking model setup failed; keeping worker fallback',error);}
+ },undefined,error=>console.warn('Walking GLB unavailable, using worker fallback',error));
+ // This is a Khronos test asset; visually it is a branded milk truck, NOT a waste hauler.
+ const truckURL='https://raw.githubusercontent.com/KhronosGroup/glTF-Sample-Assets/main/Models/CesiumMilkTruck/glTF-Binary/CesiumMilkTruck.glb';
+ trafficLoader.load(truckURL,gltf=>{
+  try{
+   const model=gltf.scene;model.updateMatrixWorld(true);
+   const bb=new THREE.Box3().setFromObject(model),size=bb.getSize(new THREE.Vector3());
+   const horizontal=Math.max(size.x,size.z,.001),s=Math.min(8.5/horizontal,3.9/Math.max(size.y,.001));
+   model.scale.multiplyScalar(s);model.updateMatrixWorld(true);
+   const scaled=new THREE.Box3().setFromObject(model),ctr=scaled.getCenter(new THREE.Vector3());
+   model.position.x-=ctr.x;model.position.z-=ctr.z;model.position.y-=scaled.min.y;
+   model.traverse(o=>{if(o.isMesh){o.castShadow=true;o.receiveShadow=true}});
+   demoTruckAnchor.add(model);truckReady=true;syncTrafficVisibility();
+  }catch(error){console.warn('Demo truck setup failed; keeping waste truck fallback',error);}
+ },undefined,error=>console.warn('Demo truck GLB unavailable; using simple truck',error));
+}
+loadTrafficAssets();
+function updateTraffic(delta){
+ if(!trafficEnabled)return;
+ trafficTime+=delta;
+ for(let i=0;i<workerTrails.length;i++){
+  const progress=(trafficTime/(26+i*7)+i*.19)%1;
+  positionAlongRoute(workerTrails[i],progress,workerAnchors[i]);
+  const worker=workerFallback[i];
+  positionAlongRoute(workerTrails[i],progress,worker.pivot);
+  const stride=Math.sin(trafficTime*7+i*1.3)*.35;
+  worker.left.rotation.x=stride;worker.right.rotation.x=-stride;
+  worker.leftArm.rotation.x=-stride;worker.rightArm.rotation.x=stride;
+ }
+ positionAlongRoute(vehicleTrail,(trafficTime/50)%1,truckAnchor);
+ for(const w of simpleTruckAnchor.userData.wheels||[])w.rotation.x+=delta*2.5;
+ if(trafficAssetPreference&&workerReady)for(const mixer of trafficMixers)mixer.update(delta);
+}
+
 const makeCommon=()=>{
  commonZones.forEach(a=>zone(a[0],a[1],a[2],a[3],a[4],colors[a[5]]));
  // Top-right: outdoor-facing loading at east, then westward shredding / transfer / mixing toward digesters.
@@ -1098,6 +1247,8 @@ document.getElementById('scene-shot').onclick=()=>exportImage(true);
 window.addEventListener('resize',()=>{camera.aspect=stage.clientWidth/stage.clientHeight;camera.updateProjectionMatrix();renderer.setSize(stage.clientWidth,stage.clientHeight);labelRenderer.setSize(stage.clientWidth,stage.clientHeight)});
 function render(now){
  requestAnimationFrame(render);
+ const trafficDelta=trafficLast?Math.min(.08,Math.max(0,(now-trafficLast)/1000)):0;
+ trafficLast=now;updateTraffic(trafficDelta);
  if(tourRunning){
   if(!tourLastTime)tourLastTime=now;
   const delta=Math.min(.08,Math.max(0,(now-tourLastTime)/1000));
