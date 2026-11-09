@@ -47,15 +47,15 @@ const cylinder=(parent,x,z,r,h,c)=>{let o=new THREE.Mesh(new THREE.CylinderGeome
 const sphere=(parent,x,z,r,c,y=r)=>{const o=new THREE.Mesh(new THREE.SphereGeometry(r,36,22),mat(c,0.83));o.position.set(x,y,z);o.castShadow=true;parent.add(o);return o};
 const label=(txt,x,z,y)=>{let el=document.createElement('div');el.className='label';el.textContent=txt;let o=new CSS2DObject(el);o.position.set(x,y,z);labelsGroup.add(o);return o};
 const zone=(name,x,z,w,d,c)=>{let a=box(zoneGroup,x,z,w,d,0.09,c,0.02);a.material.transparent=true;a.material.opacity=.18;let e=new THREE.LineSegments(new THREE.EdgesGeometry(new THREE.BoxGeometry(w,0.12,d)),new THREE.LineBasicMaterial({color:c,transparent:true,opacity:.75}));e.position.set(x,.09,z);zoneGroup.add(e);return a};
+// Unified plan coordinates: X left-to-right, Z top-to-bottom (metres).
 const commonZones=[
-['前處理（破碎、混拌）',20,13,28,16,'pretreat',448],
-['沼渣沼液暫存',49,13,22,16,'storage',352],
-['沼渣沼液處理',79.5,36.5,29,21,'process',609],
-['沼氣脫硫',79,58,20,14,'desulf',280],
-['沼氣儲存',81,79,32,26,'gas',832],
-['發電機區',82.5,13,23,16,'gen',368]
+ ['前處理（破碎、混拌）',84,21.5,28,29,'pretreat',812],
+ ['沼渣沼液處理',84,51.5,28,27,'process',756],
+ ['沼渣沼液暫存',84,81.5,28,29,'storage',812],
+ ['發電機區',13,81.5,14,29,'gen',406],
+ ['沼氣脫硫',31,81.5,18,29,'desulf',522],
+ ['沼氣儲存',55,81.5,26,29,'gas',754]
 ];
-
 const steel=0xc8d2d4, pipeColor=0x94c2be;
 const beam=(x1,y1,z1,x2,y2,z2,r=0.12,c=pipeColor,parent=equipmentGroup)=>{
   const a=new THREE.Vector3(x1,y1,z1), b=new THREE.Vector3(x2,y2,z2),dif=b.clone().sub(a);
@@ -72,7 +72,8 @@ function corrugated(x,z,w,d,h,c){
   for(let k=0;k<=Math.floor(w/.48);k++){const xx=x-w/2+k*w/Math.max(1,Math.floor(w/.48));box(equipmentGroup,xx,z-d/2-.03,.07,.06,h*.9,0x899ba1,.14);}
   box(equipmentGroup,x,z,w+.06,d+.06,.1,0x9bafb6,h-.1);
 }
-function container(x,z,c,doorsAtFront=true,kind='digester'){
+function container(x,z,c,doorsAtFront=true,kind='digester',turnHorizontal=false){
+  const firstChild=equipmentGroup.children.length;
   const w=2.438,d=12.192,h=2.896;
   corrugated(x,z,w,d,h,c);
   const front=z-(doorsAtFront?d/2:-d/2),sign=doorsAtFront?-1:1;
@@ -89,6 +90,14 @@ function container(x,z,c,doorsAtFront=true,kind='digester'){
   }else{
     beam(x,h+.06,z+3,x,h+.06,z-2,.07,0x99d1c4);
     beam(x,h+.1,z-2,x,h+1.05,z-2,.09,0x9ac9bd);
+  } 
+  if(turnHorizontal){
+    // Rotate the complete module 90 degrees around its own centre.
+    // Preserve its full ISO 40ft dimensions instead of scaling the container.
+    const added=equipmentGroup.children.slice(firstChild);
+    const pivot=new THREE.Group();pivot.position.set(x,0,z);
+    added.forEach(obj=>{equipmentGroup.remove(obj);obj.position.x-=x;obj.position.z-=z;pivot.add(obj)});
+    pivot.rotation.y=Math.PI/2;equipmentGroup.add(pivot);
   }
 }
 function tank(x,z,r,h,c,labelText){
@@ -258,58 +267,70 @@ function referenceSlantedSeparator(x,z){
   beam(x,3.4,z+1.3,x,4.1,z+1.3,.17,0x899da0);
 }
 
+
 const makeCommon=()=>{
  commonZones.forEach(a=>zone(a[0],a[1],a[2],a[3],a[4],colors[a[5]]));
- // Pre-treatment canopy, receiving hopper, shredding line and mixer.
- shed(20,13,25,13,7.1,0x728d91);
- box(equipmentGroup,14,13,5,5,2.3,0x6d888d);
+ // Top-right: receiving, shredding, mixing; retain the approved equipment styles.
+ shed(84,21.5,25,13,7.1,0x728d91);
+ box(equipmentGroup,78,21.5,5,5,2.3,0x6d888d);
  const hopper=new THREE.Mesh(new THREE.CylinderGeometry(2.9,1.4,2.2,4),mat(0xd2a66b));
- hopper.rotation.y=Math.PI/4;hopper.position.set(14,3.4,13);equipmentGroup.add(hopper);
- box(equipmentGroup,21,13,5,2,2,0x477b83,1.5);
- cylinder(equipmentGroup,27,13,1.7,3.4,0x809d99);
- beam(16,2.5,13,21,3,13,.33,0x6c7980);
- label('卸料 · 破碎 · 混拌',20,13,10);
- // Digestate handling: separate solid storage canopy and adjacent liquid tank.
- shed(45,13,10,12,5.2,0x80979a);
- for(let i=0;i<3;i++)box(equipmentGroup,42+i*2.6,13,2.3,7,1.05,0x9d9374);
- cylinder(equipmentGroup,55,13,3.1,4.5,0x788b80);torus(55,4.5,13,3.12,0xc5d4d1);
- label('沼渣堆置／沼液暫存',49,13,7.3);
- // Digestate processing updated using user-supplied real-equipment photographs.
- shed(79.5,37,25,17,8.2,0x81999e);
- referencePlasticDigestateTank(71.8,37,2.2,5.4);
- referencePlasticDigestateTank(77.4,37,2.2,5.4);
- referenceSlantedSeparator(87,37);
- label('塑膠沼液槽／斜面式固液分離機',79,38,11);
- // Three-column industrial desulfurization skid based on supplied photo.
- industrialDesulfurizationSkid(79,58);
- // Generator (standard HC 40ft assumed) and electrical equipment.
- container(82.5,13,0x526f72,true,'generator');
- box(equipmentGroup,91.5,13,3,2.7,2.8,0x8d9da0);
- label('550 kW 貨櫃發電機',82.5,14,6);
- // Two independent double-membrane gas holders.
- gasHolder(73,78);gasHolder(89,78);
- label('脫硫前儲氣',73,78,9.1);label('脫硫後儲氣',89,78,9.1);
- beam(73,.9,71,73,2.1,68,.16,0x92bbbc);
- beam(89,.9,71,89,2.1,68,.16,0x92bbbc);
- // Service roads inside the campus.
- box(zoneGroup,50,25.6,90,5.5,.03,colors.road,.02);box(zoneGroup,62.5,63,5.5,73,.03,colors.road,.02);
- label('車輛出入口',50,2,2);
+ hopper.rotation.y=Math.PI/4;hopper.position.set(78,3.4,21.5);equipmentGroup.add(hopper);
+ box(equipmentGroup,85,21.5,5,2,2,0x477b83,1.5);
+ cylinder(equipmentGroup,91,21.5,1.7,3.4,0x809d99);
+ beam(80,2.5,21.5,85,3,21.5,.33,0x6c7980);
+ label('前處理：卸料 · 破碎 · 混拌',84,21.5,10);
+ // Middle-right: photo-reference polyethylene tanks and inclined stainless separator.
+ shed(84,51.5,25,17,8.2,0x81999e);
+ referencePlasticDigestateTank(76,51,2.2,5.4);
+ referencePlasticDigestateTank(82,51,2.2,5.4);
+ referenceSlantedSeparator(91,51.5);
+ label('固液分離／沼渣沼液處理',84,51.5,11);
+ // Lower-right: solid and liquid digestate temporary storage.
+ shed(78,81.5,12,14,5.2,0x80979a);
+ for(let i=0;i<3;i++)box(equipmentGroup,75+i*2.6,81.5,2.3,7,1.05,0x9d9374);
+ cylinder(equipmentGroup,91,81.5,3.1,4.5,0x788b80);
+ torus(91,4.5,81.5,3.12,0xc5d4d1);
+ label('沼渣堆置／沼液暫存',84,81.5,7.3);
+ // Lower-left: generator / desulfurization skid / independent double membrane gas holders.
+ container(13,81.5,0x526f72,true,'generator');
+ box(equipmentGroup,18.0,81.5,2.4,2.7,2.8,0x8d9da0);
+ label('550 kW 貨櫃發電機',13,81.5,6);
+ industrialDesulfurizationSkid(31,81.5);
+ gasHolder(55,75);gasHolder(55,89);
+ label('脫硫前儲氣',55,75,9.1);
+ label('脫硫後儲氣',55,89,9.1);
+ beam(55,.9,68.5,55,2.1,67.5,.16,0x92bbbc);
+ beam(55,.9,82.5,55,2.1,83,.16,0x92bbbc);
+ // Unallocated spaces remain between allocation blocks for access and setbacks.
+ label('入口／主要道路待依基地條件確認',50,3,2);
 };
-const dryRows=[35,52,69,86];
+const dryRows=Array.from({length:10},(_,i)=>12.5+i*4.1);
 const addDry=()=>{
- zone('乾式反應器預留',32.5,63,53,72,colors.dry);
- for(let j=0;j<4;j++)for(let i=0;i<10;i++){const x=8.6+i*3.25,z=dryRows[j];container(x,z,0x798b91,true,'digester');}
- label('乾式厭氧：40 × 40呎貨櫃',27,43,6);
- tank(52,83,4,7,0x7d9f97,'沼液緩衝槽 Ø8 m（暫估）');
+ zone('乾式反應器與沼液槽預留',37,36,62,58,colors.dry);
+ const dryColumns=[14,29,44,59];
+ for(let j=0;j<10;j++)for(let i=0;i<4;i++){
+   container(dryColumns[i],dryRows[j],0x798b91,true,'digester',true);
+ }
+ label('乾式厭氧：40 × 40 呎貨櫃（4 欄 × 10 列）',37,10,6);
+ tank(19,58,4,7,0x7d9f97,'沼液緩衝槽 Ø8 m（暫估）');
 };
 const addWet=()=>{
- zone('攪拌槽與維修預留',32.5,63,53,72,colors.wet);
- [[18,46],[37,46],[27.5,69]].forEach((p,i)=>tank(p[0],p[1],5,13.5,0x315e48,'攪拌型厭氧槽 '+(i+1)+' Ø10 × H13.5 m'));
- beam(18,2,59,37,2,59,.24,0x86aaa0);
- beam(18,2,59,27.5,2,59,.24,0x86aaa0);
+ zone('攪拌型反應器預留',37,26,62,38,colors.wet);
+ zone('預留擴充／檢修空間',37,56.5,62,17,colors.liquid);
+ [[19,26],[39,26],[59,26]].forEach((p,i)=>tank(p[0],p[1],5,13.5,0x315e48,'攪拌型厭氧槽 '+(i+1)+' Ø10 × H13.5 m'));
+ beam(19,2,36,39,2,36,.24,0x86aaa0);
+ beam(39,2,36,59,2,36,.24,0x86aaa0);
+ label('預留擴充／檢修',37,56.5,3);
 };
-const areas=(mode)=>{let items=commonZones.map(a=>[a[0],a[6]]);items.unshift([mode==='dry'?'乾式反應器與作業區':'攪拌槽與維修區',3816]);let used=items.reduce((s,r)=>s+r[1],0);items.push(['其餘道路/退縮/保留（未淨分配）',10000-used]);return items;};
-const legendItems=[['dry','乾式反應器'],['wet','攪拌槽'],['pretreat','前處理'],['storage','沼渣沼液暫存'],['process','沼渣沼液處理'],['gas','沼氣袋'],['desulf','脫硫'],['gen','發電機'],['liquid','沼液槽'],['road','主要車道（示意）']];
+const areas=(mode)=>{
+ let items=commonZones.map(a=>[a[0],a[6]]);
+ if(mode==='dry'){items.unshift(['乾式反應器／沼液槽預留',3596]);}
+ else {items.unshift(['攪拌型反應器預留',2356],['擴充／檢修預留',1054]);}
+ const used=items.reduce((sum,a)=>sum+a[1],0);
+ items.push(['未劃設用地（含通行空間）',10000-used]);
+ return items;
+};
+const legendItems=[['dry','乾式反應器'],['wet','攪拌槽'],['pretreat','前處理'],['storage','沼渣沼液暫存'],['process','沼渣沼液處理'],['gas','沼氣袋'],['desulf','脫硫'],['gen','發電機'],['liquid','預留檢修／沼液槽'],['road','主要車道（示意）']];
 document.getElementById('legend').innerHTML=legendItems.map(a=>'<span class="sw" style="background:'+hex(colors[a[0]])+'"></span><span>'+a[1]+'</span>').join('');
 let mode='dry',labelsVisible=true,zonesVisible=true;
 function update(next){mode=next;while(dynamic.children.length){dynamic.remove(dynamic.children[0])}zoneGroup.clear();equipmentGroup.clear();labelsGroup.clear();dynamic.add(zoneGroup,equipmentGroup,labelsGroup);makeCommon();if(mode==='dry')addDry();else addWet();labelsGroup.visible=labelsVisible;zoneGroup.visible=zonesVisible;
