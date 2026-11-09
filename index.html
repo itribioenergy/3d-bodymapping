@@ -235,7 +235,8 @@ function updatePretreatmentDisplay(){
   && simreadyGroup.children.some(x=>x.userData.id==='conveyor_belt_a61');
  pretreatmentFallbackVisible=!(simreadyMode&&hasCore);
  pretreatmentOriginalGroup.visible=pretreatmentFallbackVisible;
- if(pretreatmentRoof)pretreatmentRoof.visible=showPretreatmentRoof;
+
+ // The complete canopy (roof and columns) is built only when enabled.
 }
 const simreadyLoader=new GLTFLoader();simreadyLoader.setMeshoptDecoder(MeshoptDecoder);
 function normalizedSimreadyObject(node,entry){
@@ -295,7 +296,7 @@ function setSimreadyMode(yes){
 }
 document.getElementById('asset-original').onclick=()=>setSimreadyMode(false);
 document.getElementById('asset-simready').onclick=()=>setSimreadyMode(true);
-document.getElementById('pretreat-roof').onchange=e=>{showPretreatmentRoof=e.target.checked;updatePretreatmentDisplay();};
+document.getElementById('pretreat-roof').onchange=e=>{showPretreatmentRoof=e.target.checked;update(mode);};
 
 const box=(parent,x,z,w,d,h,c,y=0)=>{const finish=(h>.3 && parent===equipmentGroup && Math.max(w,d)>1.5)?texturedMaterial(c,'steel',.27,.66):mat(c);
  let o=new THREE.Mesh(new THREE.BoxGeometry(w,h,d),finish);o.position.set(x,y+h/2,z);o.castShadow=h>0.3;o.receiveShadow=true;parent.add(o);return o};
@@ -628,8 +629,10 @@ function conceptPretreatmentMixer(x,z){
 const makeCommon=()=>{
  commonZones.forEach(a=>zone(a[0],a[1],a[2],a[3],a[4],colors[a[5]]));
  // Top-right: outdoor-facing loading at east, then westward shredding / transfer / mixing toward digesters.
- pretreatmentRoof=shed(84,21.5,25,13,7.1,0x728d91);
- pretreatmentRoof.visible=showPretreatmentRoof;
+ // Build the four pillars and canopy together only when explicitly requested.
+ // Do not use visible=false on the roof alone: shed() also creates posts.
+ pretreatmentRoof=null;
+ if(showPretreatmentRoof)pretreatmentRoof=shed(84,21.5,25,13,7.1,0x728d91);
  // Actual-looking custom twin shaft shredder and covered mixing tank are
  // displayed in BOTH modes, while the simplified conveyor placeholder is the fallback.
  const shredder=conceptTwinShaftShredder(93.7,21.5);
