@@ -362,6 +362,144 @@ function container(x,z,c,doorsAtFront=true,kind='digester',turnHorizontal=false)
     pivot.rotation.y=Math.PI/2;equipmentGroup.add(pivot);
   }
 }
+
+/*
+ * Optimized visual container library:
+ * - 40 dry-digester containers share seven instanced material/geometry batches.
+ * - Generator enclosure remains a separate, detailed module.
+ * - All equipment keeps the ISO 40-foot high-cube concept dimensions.
+ * This is authored procedural Three.js geometry, not an unverified external GLB.
+ */
+const iso40={w:2.438,d:12.192,h:2.896};
+const containerPalette={
+ shell:0x617f78,ribs:0x98afa8,roof:0x8caaa5,door:0x455e5d,
+ frame:0xb6c9c7,lock:0xd9dfd9,service:0x86c2b4
+};
+const instanceGeometry=new THREE.BoxGeometry(1,1,1);
+const pipeGeometry=new THREE.CylinderGeometry(.5,.5,1,10);
+const instanceMats={
+ shell:new THREE.MeshStandardMaterial({color:containerPalette.shell,metalness:.26,roughness:.72}),
+ ribs:new THREE.MeshStandardMaterial({color:containerPalette.ribs,metalness:.23,roughness:.69}),
+ roof:new THREE.MeshStandardMaterial({color:containerPalette.roof,metalness:.05,roughness:.91}),
+ door:new THREE.MeshStandardMaterial({color:containerPalette.door,metalness:.31,roughness:.66}),
+ frame:new THREE.MeshStandardMaterial({color:containerPalette.frame,metalness:.37,roughness:.57}),
+ lock:new THREE.MeshStandardMaterial({color:containerPalette.lock,metalness:.53,roughness:.48}),
+ service:new THREE.MeshStandardMaterial({color:containerPalette.service,metalness:.28,roughness:.55})
+};
+function buildInstancedDigesters(positions){
+ const lists={shell:[],ribs:[],roof:[],door:[],frame:[],lock:[],service:[]};
+ const local=new THREE.Object3D(),base=new THREE.Object3D(),total=new THREE.Matrix4();
+ function part(key,cx,cy,cz,w,h,d,angle=0){
+  local.position.set(cx,cy,cz);local.rotation.set(0,angle,0);
+  local.scale.set(w,h,d);local.updateMatrix();
+  total.multiplyMatrices(base.matrix,local.matrix);
+  lists[key].push(total.clone());
+ }
+ for(const [px,pz] of positions){
+  base.position.set(px,0,pz);base.rotation.set(0,Math.PI/2,0);base.scale.set(1,1,1);
+  base.updateMatrix();
+  const {w,d,h}=iso40;
+  // Single shell with distinct roof panel raised above it to prevent z-fighting.
+  part('shell',0,h/2,0,w,h,d);
+  part('roof',0,h+.055,0,w+.06,.08,d+.06);
+  // Corrugated side ribs, with reduced density at a fly-over viewing distance.
+  const longCount=20;
+  for(let i=0;i<=longCount;i++){
+   const z=-d/2+.15+(d-.30)*i/longCount;
+   part('ribs',-w/2-.035,h*.51,z,.065,h*.90,.068);
+   part('ribs', w/2+.035,h*.51,z,.065,h*.90,.068);
+  }
+  // Deep door on the front (-local-Z). Dark color distinguishes it.
+  part('door',0,h*.49,-d/2-.055,w-.22,h-.32,.092);
+  for(const side of [-1,1]){
+   const x=side*(w/2-.12);
+   part('frame',x,h*.50,-d/2-.12,.075,h-.16,.09);
+   part('frame',x,h*.51,d/2+.05,.075,h-.18,.085);
+  }
+  // End-wall corrugations and twin lock rods.
+  for(let j=0;j<5;j++){
+   const x=-w/2+.17+j*(w-.34)/4;
+   part('ribs',x,h*.51,d/2+.035,.064,h*.86,.075);
+  }
+  for(const x of [-.44,.44]){
+   part('lock',x,h*.49,-d/2-.135,.052,h-.38,.055);
+   for(const y of [.52,1.37,2.26]){
+    part('lock',x+.10,y,-d/2-.164,.21,.045,.055);
+   }
+  }
+  // Service rails and modest process connections on roof.
+  part('service',0,h+.15,-1.1,.09,.095,4.8);
+  part('service',.53,h+.32,-2.75,.12,.38,.12);
+  part('frame',0,.17,0,w+.12,.11,d+.12);
+ }
+ const group=new THREE.Group();
+ group.name='40 optimized dry-digester containers';
+ for(const [key,mats] of Object.entries(lists)){
+  if(!mats.length)continue;
+  const batch=new THREE.InstancedMesh(instanceGeometry,instanceMats[key],mats.length);
+  batch.name='dry-containers:'+key+' ('+mats.length+' instances)';
+  batch.userData={type:'instanced-dry-container',batch:key,instances:mats.length};
+  mats.forEach((matrix,i)=>batch.setMatrixAt(i,matrix));
+  batch.instanceMatrix.needsUpdate=true;batch.castShadow=true;batch.receiveShadow=true;
+  batch.computeBoundingSphere();group.add(batch);
+ }
+ equipmentGroup.add(group);
+ return group;
+}
+function buildGeneratorContainer(x,z){
+ const {w,d,h}=iso40;
+ const group=new THREE.Group();group.position.set(x,0,z);
+ group.name='550 kW generator container (concept)';
+ const metal=(color,metalness=.24,roughness=.7)=>new THREE.MeshStandardMaterial({color,metalness,roughness});
+ const casing=metal(0x456169),rib=metal(0x829ca1,.37,.54),
+  trim=metal(0xc5d5d7,.4,.57),dark=metal(0x263a42,.1,.82),
+  shutter=metal(0x283e47,.22,.67),roof=metal(0x9aacb0,.08,.9);
+ function cube(w1,h1,d1,px,py,pz,m){
+  const o=new THREE.Mesh(new THREE.BoxGeometry(w1,h1,d1),m);
+  o.position.set(px,py,pz);o.castShadow=true;o.receiveShadow=true;group.add(o);return o;
+ }
+ function cyl(radius,height,px,py,pz,m){
+  const o=new THREE.Mesh(new THREE.CylinderGeometry(radius,radius,height,16),m);
+  o.position.set(px,py,pz);o.castShadow=true;group.add(o);return o;
+ }
+ cube(w,h,d,0,h/2,0,casing);
+ cube(w+.06,.08,d+.06,0,h+.055,0,roof);
+ // Parallel metal corrugation bands on both sides.
+ for(let i=0;i<17;i++){
+  const zz=-d/2+.35+i*(d-.7)/16;
+  for(const side of [-1,1])cube(.045,h*.79,.095,side*(w/2+.026),h*.51,zz,rib);
+ }
+ // Loading/access doors on the near end.
+ cube(w-.24,h-.38,.075,0,h/2,-d/2-.055,dark);
+ for(const xx of [-.49,.49]){
+  cube(.055,h-.47,.09,xx,h/2,-d/2-.13,trim);
+  cube(.28,.075,.10,xx+.12,1.25,-d/2-.19,trim);
+ }
+ // Four intake ventilation grilles on outside wall, with louvers.
+ for(const zz of [-3.55,-1.30,1.30,3.55]){
+  cube(.105,1.16,1.52,-w/2-.085,1.43,zz,shutter);
+  for(let row=0;row<7;row++){
+   const rail=cube(.045,.045,1.42,-w/2-.147,.94+row*.16,zz,trim);
+   rail.rotation.z=-.22;
+  }
+ }
+ // Dedicated maintenance access on the opposite long side.
+ cube(.08,1.93,1.18,w/2+.065,1.35,-2.9,dark);
+ cube(.09,.035,1.3,w/2+.10,2.31,-2.9,trim);
+ cube(.13,.10,.13,w/2+.12,1.23,-2.46,trim);
+ // Cooling intake/plenum and exhaust outlet: illustrative, not verified 550 kW specification.
+ cube(1.3,.62,1.55,0,h+.44,2.8,shutter);
+ cube(.96,.12,1.65,0,h+.82,2.8,trim);
+ cyl(.28,1.22,.57,h+.67,-2.65,trim);
+ cyl(.37,.22,.57,h+1.38,-2.65,dark);
+ // Safety marking: yellow lower corners, distinct from the digesters.
+ const warning=metal(0xceb25c,.13,.72);
+ for(const zz of [-d/2+.35,d/2-.35])cube(.12,.34,.55,w/2+.10,.27,zz,warning);
+ group.userData={source:'custom procedural',type:'generator',nominalPowerKW:550,designVerified:false};
+ equipmentGroup.add(group);
+ return group;
+}
+
 function tank(x,z,r,h,c,labelText){
   slab(x,z,r*2+1.4,r*2+1.4);
   cylinder(equipmentGroup,x,z,r,h,c);
@@ -659,7 +797,7 @@ const makeCommon=()=>{
  torus(91,4.5,81.5,3.12,0xc5d4d1);
  label('沼渣堆置／沼液暫存',84,81.5,7.3);
  // Lower-left: generator / desulfurization skid / independent double membrane gas holders.
- container(13,81.5,0x526f72,true,'generator');
+ buildGeneratorContainer(13,81.5);
  box(equipmentGroup,18.0,81.5,2.4,2.7,2.8,0x8d9da0);
  label('550 kW 貨櫃發電機',13,81.5,6);
  industrialDesulfurizationSkid(31,81.5);
@@ -675,9 +813,9 @@ const dryRows=Array.from({length:10},(_,i)=>12.5+i*4.1);
 const addDry=()=>{
  zone('乾式反應器與沼液槽預留',37,36,62,58,colors.dry);
  const dryColumns=[14,29,44,59];
- for(let j=0;j<10;j++)for(let i=0;i<4;i++){
-   container(dryColumns[i],dryRows[j],0x798b91,true,'digester',true);
- }
+ const dryPositions=[];
+ for(let j=0;j<10;j++)for(let i=0;i<4;i++)dryPositions.push([dryColumns[i],dryRows[j]]);
+ buildInstancedDigesters(dryPositions);
  label('乾式厭氧：40 × 40 呎貨櫃（4 欄 × 10 列）',37,10,6);
  tank(19,58,4,7,0x7d9f97,'沼液緩衝槽 Ø8 m（暫估）');
 };
