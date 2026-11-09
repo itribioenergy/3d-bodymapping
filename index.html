@@ -64,7 +64,7 @@ function proceduralTexture(kind,size=256){
  if(kind==='concrete'){ctx.lineWidth=.7;ctx.strokeStyle='rgba(57,65,65,.18)';
  for(let q=1;q<4;q++){ctx.beginPath();ctx.moveTo(q*size/4,0);ctx.lineTo(q*size/4,size);ctx.stroke();
  ctx.beginPath();ctx.moveTo(0,q*size/4);ctx.lineTo(size,q*size/4);ctx.stroke();}}
- if(kind==='steel'){ctx.fillStyle='rgba(238,240,241,.07)';for(let y=0;y<size;y+=19)ctx.fillRect(0,y,size,2);}
+ if(kind==='steel'){ctx.fillStyle='rgba(238,240,241,.018)';for(let y=0;y<size;y+=32)ctx.fillRect(0,y,size,1);}
  const texture=new THREE.CanvasTexture(cv);texture.colorSpace=THREE.SRGBColorSpace;texture.wrapS=texture.wrapT=THREE.RepeatWrapping;
  texture.anisotropy=Math.min(8,renderer.capabilities.getMaxAnisotropy());return texture;
 }
@@ -74,6 +74,10 @@ function texturedMaterial(color,kind='concrete',metalness=0,roughness=.86,repeat
  return new THREE.MeshStandardMaterial({color,map,metalness,roughness,side:THREE.DoubleSide});
 }
 
+// Matte, non-repeating roof material prevents grazing-angle moire and excessive highlights.
+const roofMaterial=(color=0xb2bdc1)=>new THREE.MeshStandardMaterial({
+ color,metalness:.04,roughness:.94,side:THREE.FrontSide
+});
 const mat=(color,opacity=1)=>new THREE.MeshStandardMaterial({color,transparent:opacity<1,opacity,roughness:0.68,metalness:0.08,side:THREE.DoubleSide});
 const ground=new THREE.Mesh(new THREE.PlaneGeometry(100,100),texturedMaterial(0xa5aaa5,'concrete',0,.98,9,9));ground.rotation.x=-Math.PI/2;ground.position.set(50,-0.06,50);ground.receiveShadow=true;scene.add(ground);
 const grid=new THREE.GridHelper(100,20,0x45616c,0x2d4956);grid.position.set(50,-0.02,50);scene.add(grid);
@@ -206,7 +210,12 @@ function corrugated(x,z,w,d,h,c){
   const n=Math.max(3,Math.floor(d/.48));
   for(let i=0;i<=n;i++){const zz=z-d/2+i*d/n;box(equipmentGroup,x-w/2-.035,zz,.06,.07,h*.92,0x84949b,.12);box(equipmentGroup,x+w/2+.035,zz,.06,.07,h*.92,0x84949b,.12);}
   for(let k=0;k<=Math.floor(w/.48);k++){const xx=x-w/2+k*w/Math.max(1,Math.floor(w/.48));box(equipmentGroup,xx,z-d/2-.03,.07,.06,h*.9,0x899ba1,.14);}
-  box(equipmentGroup,x,z,w+.06,d+.06,.1,0x9bafb6,h-.1);
+  // Previously the lid top was coplanar with the container body at y=h,
+  // which caused Z-fighting and white striped artifacts at oblique angles.
+  // One matte lid, separated from the body top, with no repeated metal texture.
+  const lid=new THREE.Mesh(new THREE.BoxGeometry(w+.035,.045,d+.035),roofMaterial(0xb5c1c4));
+  lid.position.set(x,h+.027,z);
+  lid.castShadow=true;lid.receiveShadow=false;equipmentGroup.add(lid);
 }
 function container(x,z,c,doorsAtFront=true,kind='digester',turnHorizontal=false){
   const firstChild=equipmentGroup.children.length;
@@ -255,8 +264,10 @@ function tank(x,z,r,h,c,labelText){
 function shed(x,z,w,d,h,c){
  slab(x,z,w+.5,d+.5);
  for(const xx of [x-w/2+.5,x+w/2-.5])for(const zz of [z-d/2+.5,z+d/2-.5])beam(xx,0,zz,xx,h,zz,.17,0x6c8690);
- const roof=box(equipmentGroup,x,z,w+.8,d+.8,.22,c,h);
- box(equipmentGroup,x,z,w+.1,d+.1,.09,0xbac8cf,h+.12);
+ // A single roof replaces two intersecting overlapping metal planes.
+ const roof=new THREE.Mesh(new THREE.BoxGeometry(w+.8,.18,d+.8),roofMaterial(0xbac7cb));
+ roof.position.set(x,h+.10,z);
+ roof.castShadow=true;roof.receiveShadow=true;equipmentGroup.add(roof);
  return roof;
 }
 function gasHolder(x,z){
