@@ -173,3 +173,15 @@ python3 -m http.server 8000
 **效能說明：** InstancedMesh 明顯降低大量重複物件的 CPU 場景管理及 GPU draw calls，但不代表只需 1 個 draw call（這版為 7 類批次），也不保證在所有 GPU 都有固定倍率的 FPS 提升。未啟用預先載入大體積貨櫃 GLB，不會因 40 座乾式槽而增加外部模型下載量。
 
 **驗證範圍：** 已檢查 GitHub 原始碼與 JavaScript 語法，並核對 40 座配置、兩種厭氧方案、五種攝影機路徑、PNG 截圖與錄影邏輯仍存在；尚未完成真實瀏覽器 FPS／記憶體基準測試。
+
+
+## 動態人車展示：人物步行與卡車進出場（2026-11-09）
+
+- 新增 **3 位巡檢人員**（前處理區、乾式設備區、發電／脫硫區）及 **1 輛運輸卡車**，動畫在現有渲染循環中每影格更新，可搭配既有五種攝影機動畫和錄影功能。
+- 預設啟用人車；側邊欄可切換「啟用人車／停止顯示」與「GLB 素材優先／輕量示意」，不影響原有乾式／濕式配置、設備及截圖。
+- **人物 GLB 試用**：Three.js 官方範例的 `Soldier.glb`（URL：`https://raw.githubusercontent.com/mrdoob/three.js/dev/examples/models/gltf/Soldier.glb`），使用內建 Walk 動畫，搭配 `SkeletonUtils.clone` 實例化三位骨架人物。此模型屬於展示流程驗證，**不是已換裝的工地安全帽工作員**；若載入失敗，顯示自建安全帽人形走路示意。
+- **卡車 GLB 試用**：Khronos `CesiumMilkTruck.glb`（URL：`https://raw.githubusercontent.com/KhronosGroup/glTF-Sample-Assets/main/Models/CesiumMilkTruck/glTF-Binary/CesiumMilkTruck.glb`）。此為 **Cesium 品牌奶品配送卡車**，非真正有機廢棄物大卡車，僅作 GLB 行車管線測試；若載入失敗或切換輕量示意，顯示自建大型封閉式六輪運輸車。
+- **授權**：Three.js 範例素材隨其 MIT 發布；Cesium Milk Truck 署名著作 © 2017 Cesium，**CC BY 4.0**（原始資訊見 Khronos glTF Sample Assets 各模型 README）。重新發布或展示 Cesium 原模型需保留此署名。
+- **效能**：人員共用一份載入的角色 GLB，再複製骨架（不執行三次 HTTP 載入）；車輛只載一份 GLB。未取得外部 GLB 時會使用純程式幾何作備援。
+
+**注意**：動態路徑為投資展示用途，不代表已完成交通動線、卡車迴轉半徑、避碰、人車分流、卸料高度、廠區真實入口與供貨契約設計驗證。實際瀏覽器模型載入、跨來源資源存取以及動畫渲染表現仍需驗證。
