@@ -882,6 +882,34 @@ document.getElementById('traffic-simple').onclick=()=>{trafficAssetPreference=fa
 document.getElementById('traffic-heading-flip').onchange=e=>{workerHeadingFlip=e.target.checked;applyWorkerHeading();};
 syncTrafficVisibility();
 
+// The imported STL has no original material hierarchy. Its front green
+// compactor panels were partly classified as white cab during conversion.
+// Add a complete roof and front enclosure at the GLB's ORIGINAL local scale
+// before fitting it into the scene. Independent green geometry prevents the
+// white patches resurfacing when the GLB is loaded on mobile browsers.
+function fixGarbageTruckEnclosure(model){
+ const paint=new THREE.MeshStandardMaterial({color:0x16894a,metalness:.22,roughness:.57,side:THREE.DoubleSide});
+ const edge=new THREE.MeshStandardMaterial({color:0x106b3c,metalness:.28,roughness:.55,side:THREE.DoubleSide});
+ function panel(w,h,d,x,y,z,material=paint){
+  const p=new THREE.Mesh(new THREE.BoxGeometry(w,h,d),material);
+  p.position.set(x,y,z);p.castShadow=true;p.receiveShadow=true;model.add(p);
+  return p;
+ }
+ // Truck's cab points toward +Z; the compactor occupies the rear (-Z).
+ // The previous lid stopped short of the white front bulkhead.
+ panel(2.22,.12,5.96,0,3.43,-.60);
+ panel(2.22,.18,.20,0,3.32,2.38,edge);
+ // Close the end adjacent to the cab, without covering the cab itself.
+ panel(2.20,1.89,.09,0,2.32,2.38);
+ // Cover pale side surfaces in the forwardmost 1.2m of the compactor.
+ for(const side of [-1,1]){
+  panel(.075,1.82,1.42,side*1.105,2.28,1.71);
+  panel(.11,.14,5.93,side*1.095,3.29,-.57,edge);
+ }
+ // Reinforced seam immediately behind the white cab.
+ panel(2.21,.09,.12,0,1.40,2.40,edge);
+}
+
 function loadTrafficAssets(){
  // Quaternius Ultimate Modular Men Worker, CC0; public preserved GLB source.
  // This replaces the military Soldier with a normal hard-hat industrial worker.
@@ -909,10 +937,12 @@ function loadTrafficAssets(){
  // The user-provided GrabCAD Garbage Truck 2 STL, simplified to 41,199 faces and a GLB.
  // License confirmed by project owner. This is a local first-party project asset.
  // Original source orientation: +X points toward cab; baked GLB faces +Z.
- const truckURL='./assets/grabcad-garbage-truck-optimized.glb?v=roof-20261112';
+ const truckURL='./assets/grabcad-garbage-truck-optimized.glb?v=enclosure-20261112b';
  trafficLoader.load(truckURL,gltf=>{
   try{
    const model=gltf.scene;model.updateMatrixWorld(true);
+   fixGarbageTruckEnclosure(model);
+   model.updateMatrixWorld(true);
    const bb=new THREE.Box3().setFromObject(model),size=bb.getSize(new THREE.Vector3());
    const horizontal=Math.max(size.x,size.z,.001),s=Math.min(8.5/horizontal,3.9/Math.max(size.y,.001));
    model.scale.multiplyScalar(s);model.updateMatrixWorld(true);
