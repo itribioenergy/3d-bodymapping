@@ -198,3 +198,14 @@ python3 -m http.server 8000
 - 若遠端 GLB 載入失敗，仍顯示原有帶安全帽的輕量人形。卡車與其他場內模型不變。
 
 尚未以瀏覽器驗證實際站姿與步態；此版已通過 JavaScript 語法檢查。
+
+
+## 2026-11-12：更換低面數貨運車與七位現場巡檢員
+
+- 將原有 Khronos Cesium Milk Truck（奶品配送車）GLB 改為 **Kenney Car Kit 的 Truck 模型**，採用 CC0 授權，原始 GitHub 檔案大小約 **184 KB**：`https://raw.githubusercontent.com/Papyszoo/CC0-Public-Domain-Models/main/packs/kenney-car-kit/models/truck/truck.glb`；模型鏡像來源：`https://github.com/Papyszoo/CC0-Public-Domain-Models/blob/main/packs/kenney-car-kit/models/truck/truck.glb`。這仍是通用貨運車，並非實際廢棄物收運車或自卸車。
+- Quaternius Worker 人員由 3 位改為 **7 位**；只下載一次 Worker GLB，以 `SkeletonUtils.clone` 建立七位角色。
+- 巡檢配置：前處理 2 位、反應器通道 3 位、發電／脫硫 1 位、沼渣處理 1 位。依各自路線速率及起點錯開時間，部分路線加入短暫停頓；停頓時同步凍結步行骨架動作。
+- 在濕式方案中，三位反應器區巡檢員改走避開圓形反應槽的替代路線；保留人車顯示、GLB/輕量示意切換與面向反轉操作。
+- 運輸車仍沿原有廠區入口／前處理區的示範路徑移動。保留自建無品牌封閉式卡車作為 GLB 載入失敗的替代物件。
+
+授權：Kenney Car Kit 原始資產依 CC0 公開，模型取自公開 CC0 素材整理倉庫。尚未完成瀏覽器中實際 GLB 方向、車輪旋轉與道路避碰驗證；這是呈現概念用途。
