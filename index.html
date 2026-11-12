@@ -39,9 +39,10 @@
 <p class="note">來源 NVIDIA SimReady（CC BY 4.0）；CodePawl 轉檔 GLB。遠端失敗時保留原始前處理機具，主要反應器不變。</p>
 <h3>人車動態展示</h3>
 <div class="mode"><button id="traffic-on" class="active">啟用人車</button><button id="traffic-off">停止顯示</button></div>
-<div class="mode"><button id="traffic-assets" class="active">GLB 素材優先</button><button id="traffic-simple">輕量示意</button></div>
+<div class="mode"><button id="traffic-assets" class="active">工作員 GLB 優先</button><button id="traffic-simple">輕量示意</button></div>
+<div style="margin-top:7px"><label style="font-size:12px;cursor:pointer"><input type="checkbox" id="traffic-heading-flip"> 人物面向反轉 180°（必要時校正）</label></div>
 <p class="note" id="traffic-status" role="status">3 位巡檢人員與 1 輛卡車沿預設路線循環移動；GLB 載入失敗時使用輕量模型。</p>
-<p class="note">人物示範模型為 Three.js Soldier，貨車示範為 Khronos Cesium Milk Truck（不是正式廢棄物運輸車）。場內人車路徑僅供視覺展示，尚未核對車輛迴轉半徑。</p>
+<p class="note">人物模型改用 Quaternius Worker（工地安全帽，CC0）；貨車示範仍為 Khronos Cesium Milk Truck（不是正式廢棄物運輸車）。場內人車路徑僅供視覺展示，尚未核對車輛迴轉半徑。</p>
 <h3>周邊環境</h3>
 <div class="mode envmode" style="flex-wrap:wrap"><button id="env-farm">🌴 熱帶農田</button><button id="env-industrial">🏭 鄉村工業區</button><button id="env-engineering" class="active">工程配置</button></div>
 <p class="note">周邊環境為視覺示意，不佔用一公頃基地；切換環境不會改變設備位置、尺寸與計算。</p>
@@ -788,13 +789,20 @@ const truckAnchor=new THREE.Group();trafficRoot.add(truckAnchor);
 const demoTruckAnchor=new THREE.Group(),simpleTruckAnchor=new THREE.Group();
 truckAnchor.add(demoTruckAnchor,simpleTruckAnchor);
 let workerReady=false,truckReady=false;
+// Most Quaternius humanoids use +Z as their facing axis; the old Soldier faced -Z.
+let workerHeadingFlip=false;
 const workerTrails=[
  [[80,31],[86,31],[91,31],[91,33],[80,33]],
  [[8,19],[8,33],[8,45],[8,33]],
  [[21,76],[22,83],[20,91],[23,83]]
 ];
 const vehicleTrail=[[96.5,4],[96.5,9],[96.5,16],[96.5,24],[96.5,30],[96.5,24],[96.5,16],[96.5,9],[96.5,4]];
-const workerAnchors=workerTrails.map((_,i)=>{const g=new THREE.Group();g.name='patrol worker '+(i+1);sharedWorkers.add(g);return g;});
+const workerAnchors=workerTrails.map((_,i)=>{
+ const g=new THREE.Group();g.name='patrol worker '+(i+1);
+ const face=new THREE.Group();face.name='worker-facing-calibration';g.add(face);g.userData.face=face;
+ sharedWorkers.add(g);return g;
+});
+function applyWorkerHeading(){workerAnchors.forEach(g=>{g.userData.face.rotation.y=workerHeadingFlip?Math.PI:0});}
 const workerFallback=workerTrails.map((_,i)=>{
  const pivot=new THREE.Group(),material=new THREE.MeshStandardMaterial({color:i===0?0xe8b448:i===1?0xdad661:0xe09a52,roughness:.88});
  function part(geometry,mat,x,y,z){const mesh=new THREE.Mesh(geometry,mat);mesh.position.set(x,y,z);mesh.castShadow=true;pivot.add(mesh);return mesh;}
@@ -857,14 +865,17 @@ document.getElementById('traffic-on').onclick=()=>{trafficEnabled=true;syncTraff
 document.getElementById('traffic-off').onclick=()=>{trafficEnabled=false;syncTrafficVisibility()};
 document.getElementById('traffic-assets').onclick=()=>{trafficAssetPreference=true;syncTrafficVisibility()};
 document.getElementById('traffic-simple').onclick=()=>{trafficAssetPreference=false;syncTrafficVisibility()};
+document.getElementById('traffic-heading-flip').onchange=e=>{workerHeadingFlip=e.target.checked;applyWorkerHeading();};
 syncTrafficVisibility();
 
 function loadTrafficAssets(){
- // Soldier includes Walk, Idle and Run clips. Public MIT three.js example asset.
- const soldierURL='https://raw.githubusercontent.com/mrdoob/three.js/dev/examples/models/gltf/Soldier.glb';
- trafficLoader.load(soldierURL,gltf=>{
+ // Quaternius Ultimate Modular Men Worker, CC0; public preserved GLB source.
+ // This replaces the military Soldier with a normal hard-hat industrial worker.
+ const workerURL='https://raw.githubusercontent.com/euuuuuuan/fatal-funnel-public/main/packages/renderer/assets/models/quaternius-men/worker.glb';
+ trafficLoader.load(workerURL,gltf=>{
   try{
-   const walk=(gltf.animations||[]).find(c=>/walk/i.test(c.name));
+   const walk=(gltf.animations||[]).find(c=>/^(walk|walking|walk_forward|walkcycle)$/i.test(c.name))
+    ||(gltf.animations||[]).find(c=>/walk/i.test(c.name)&&!/back|left|right/i.test(c.name));
    for(let i=0;i<3;i++){
     const model=cloneSkinned(gltf.scene);model.updateMatrixWorld(true);
     const bounds=new THREE.Box3().setFromObject(model),height=bounds.getSize(new THREE.Vector3()).y;
@@ -872,15 +883,15 @@ function loadTrafficAssets(){
     const fitted=new THREE.Box3().setFromObject(model);
     model.position.y-=fitted.min.y;
     model.traverse(o=>{if(o.isMesh){o.castShadow=true;o.receiveShadow=true}});
-    workerAnchors[i].add(model);
+    workerAnchors[i].userData.face.add(model);
     if(walk){
      const mixer=new THREE.AnimationMixer(model);mixer.clipAction(walk).play();
      mixer.update(i*.47);trafficMixers.push(mixer);
     }
    }
-   workerReady=true;syncTrafficVisibility();
-  }catch(error){console.warn('Walking model setup failed; keeping worker fallback',error);}
- },undefined,error=>console.warn('Walking GLB unavailable, using worker fallback',error));
+   workerReady=true;applyWorkerHeading();syncTrafficVisibility();
+  }catch(error){console.warn('Worker model setup failed; keeping worker fallback',error);}
+ },undefined,error=>console.warn('Quaternius worker GLB unavailable, using worker fallback',error));
  // This is a Khronos test asset; visually it is a branded milk truck, NOT a waste hauler.
  const truckURL='https://raw.githubusercontent.com/KhronosGroup/glTF-Sample-Assets/main/Models/CesiumMilkTruck/glTF-Binary/CesiumMilkTruck.glb';
  trafficLoader.load(truckURL,gltf=>{
