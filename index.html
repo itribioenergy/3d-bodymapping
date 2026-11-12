@@ -908,6 +908,29 @@ function fixGarbageTruckEnclosure(model){
  }
  // Reinforced seam immediately behind the white cab.
  panel(2.21,.09,.12,0,1.40,2.40,edge);
+
+ // The originally supplied STL has an open cab roof. Repair the CAB (not
+ // the green compactor) with a white top that follows its approximate outline.
+ // Cab lies at +Z; all measurements are in the original, unscaled GLB space.
+ const cabWhite=new THREE.MeshStandardMaterial({
+  color:0xf0f0ee,metalness:.10,roughness:.69,side:THREE.DoubleSide
+ });
+ const cabBlack=new THREE.MeshStandardMaterial({
+  color:0x20282b,metalness:.18,roughness:.57,side:THREE.DoubleSide
+ });
+ // Split the cap into a wide center and two narrower, slightly lower edges.
+ // This is visibly enclosed from aerial views without creating a bulky slab.
+ panel(1.80,.13,1.70,0,2.83,3.53,cabWhite);
+ for(const side of [-1,1]){
+  const shoulder=panel(.18,.095,1.62,side*.97,2.77,3.53,cabWhite);
+  shoulder.rotation.z=-side*.10;
+  // Keep the top of each door flush with the roof edge.
+  panel(.065,.25,1.28,side*1.035,2.61,3.57,cabWhite);
+ }
+ // Front windshield upper trim, slightly forward of the roof.
+ panel(2.00,.07,.13,0,2.71,4.34,cabBlack);
+ // White seam at rear of cabin, immediately before the green body.
+ panel(2.02,.12,.17,0,2.79,2.71,cabWhite);
 }
 
 function loadTrafficAssets(){
@@ -937,7 +960,7 @@ function loadTrafficAssets(){
  // The user-provided GrabCAD Garbage Truck 2 STL, simplified to 41,199 faces and a GLB.
  // License confirmed by project owner. This is a local first-party project asset.
  // Original source orientation: +X points toward cab; baked GLB faces +Z.
- const truckURL='./assets/grabcad-garbage-truck-optimized.glb?v=enclosure-20261112b';
+ const truckURL='./assets/grabcad-garbage-truck-optimized.glb?v=cab-roof-20261112d';
  trafficLoader.load(truckURL,gltf=>{
   try{
    const model=gltf.scene;model.updateMatrixWorld(true);
