@@ -909,7 +909,7 @@ function loadTrafficAssets(){
  // The user-provided GrabCAD Garbage Truck 2 STL, simplified to 41,199 faces and a GLB.
  // License confirmed by project owner. This is a local first-party project asset.
  // Original source orientation: +X points toward cab; baked GLB faces +Z.
- const truckURL='./assets/grabcad-garbage-truck-optimized.glb';
+ const truckURL='./assets/grabcad-garbage-truck-optimized.glb?v=roof-20261112';
  trafficLoader.load(truckURL,gltf=>{
   try{
    const model=gltf.scene;model.updateMatrixWorld(true);
