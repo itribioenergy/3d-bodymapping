@@ -185,3 +185,16 @@ python3 -m http.server 8000
 - **效能**：人員共用一份載入的角色 GLB，再複製骨架（不執行三次 HTTP 載入）；車輛只載一份 GLB。未取得外部 GLB 時會使用純程式幾何作備援。
 
 **注意**：動態路徑為投資展示用途，不代表已完成交通動線、卡車迴轉半徑、避碰、人車分流、卸料高度、廠區真實入口與供貨契約設計驗證。實際瀏覽器模型載入、跨來源資源存取以及動畫渲染表現仍需驗證。
+
+
+## 工作人員外觀與步行方向改善（2026-11-12）
+
+應使用者反饋，原先偏軍事風格的 Three.js `Soldier.glb` 已更換為 **Quaternius Ultimate Modular Men Pack 的 Worker 工作人員 GLB**，具工業人員工作服／安全帽外觀，使用其 `Walk` 動畫，維持原有三位巡檢人員與巡檢路線。
+
+- 線上資產：`https://raw.githubusercontent.com/euuuuuuan/fatal-funnel-public/main/packages/renderer/assets/models/quaternius-men/worker.glb`
+- 來源與授權：Quaternius **Ultimate Modular Men Pack**，CC0-1.0；該公用存放庫 `CREDITS.md` 記錄原始來源、授權與 SHA-256。這不是由 NVIDIA 提供的素材。
+- 透過 `SkeletonUtils.clone` 產生三位角色，重複使用一份 GLB 而非三次下載。
+- 步行朝向：每位人物新增獨立面向校正群組，預設依行進方向調整；側邊欄「人物面向反轉 180°」可解決不同 GLB 模型正面軸線定義造成的背向走路。
+- 若遠端 GLB 載入失敗，仍顯示原有帶安全帽的輕量人形。卡車與其他場內模型不變。
+
+尚未以瀏覽器驗證實際站姿與步態；此版已通過 JavaScript 語法檢查。
