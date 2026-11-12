@@ -41,8 +41,8 @@
 <div class="mode"><button id="traffic-on" class="active">啟用人車</button><button id="traffic-off">停止顯示</button></div>
 <div class="mode"><button id="traffic-assets" class="active">工作員 GLB 優先</button><button id="traffic-simple">輕量示意</button></div>
 <div style="margin-top:7px"><label style="font-size:12px;cursor:pointer"><input type="checkbox" id="traffic-heading-flip"> 人物面向反轉 180°（必要時校正）</label></div>
-<p class="note" id="traffic-status" role="status">3 位巡檢人員與 1 輛卡車沿預設路線循環移動；GLB 載入失敗時使用輕量模型。</p>
-<p class="note">人物模型改用 Quaternius Worker（工地安全帽，CC0）；貨車示範仍為 Khronos Cesium Milk Truck（不是正式廢棄物運輸車）。場內人車路徑僅供視覺展示，尚未核對車輛迴轉半徑。</p>
+<p class="note" id="traffic-status" role="status">7 位巡檢人員與 1 輛卡車沿預設路線循環移動；GLB 載入失敗時使用輕量模型。</p>
+<p class="note">人物模型改用 Quaternius Worker（工地安全帽，CC0）；貨車改為 Kenney Car Kit 的 CC0 貨運車 GLB（概念比例，非實際廢棄物收運車）。場內人車路徑僅供視覺展示，尚未核對車輛迴轉半徑。</p>
 <h3>周邊環境</h3>
 <div class="mode envmode" style="flex-wrap:wrap"><button id="env-farm">🌴 熱帶農田</button><button id="env-industrial">🏭 鄉村工業區</button><button id="env-engineering" class="active">工程配置</button></div>
 <p class="note">周邊環境為視覺示意，不佔用一公頃基地；切換環境不會改變設備位置、尺寸與計算。</p>
@@ -791,11 +791,22 @@ truckAnchor.add(demoTruckAnchor,simpleTruckAnchor);
 let workerReady=false,truckReady=false;
 // Most Quaternius humanoids use +Z as their facing axis; the old Soldier faced -Z.
 let workerHeadingFlip=false;
+// Duplicate waypoints create short inspection pauses between patrol legs.
 const workerTrails=[
- [[80,31],[86,31],[91,31],[91,33],[80,33]],
- [[8,19],[8,33],[8,45],[8,33]],
- [[21,76],[22,83],[20,91],[23,83]]
+ [[75,32],[80,32],[80,32],[87,32],[89,34],[76,34],[76,34],[75,32]],
+ [[90,35],[86,35],[82,35],[82,35],[77,35],[84,35],[90,35]],
+ [[22,13],[22,29],[22,29],[22,45],[22,45],[22,13]],
+ [[37,14],[37,25],[37,25],[37,42],[37,14]],
+ [[52,16],[52,31],[52,31],[52,48],[52,16]],
+ [[22,73],[22,80],[22,80],[23,88],[22,91],[22,73]],
+ [[71,45],[71,50],[71,50],[71,59],[71,59],[71,45]]
 ];
+const wetWorkerTrails={
+ 2:[[28,12],[28,25],[28,25],[28,38],[28,12]],
+ 3:[[49,12],[49,25],[49,25],[49,38],[49,12]],
+ 4:[[68,12],[68,25],[68,25],[68,38],[68,12]]
+};
+const workerRates=[25,34,39,31,45,37,33];
 const vehicleTrail=[[96.5,4],[96.5,9],[96.5,16],[96.5,24],[96.5,30],[96.5,24],[96.5,16],[96.5,9],[96.5,4]];
 const workerAnchors=workerTrails.map((_,i)=>{
  const g=new THREE.Group();g.name='patrol worker '+(i+1);
@@ -804,7 +815,7 @@ const workerAnchors=workerTrails.map((_,i)=>{
 });
 function applyWorkerHeading(){workerAnchors.forEach(g=>{g.userData.face.rotation.y=workerHeadingFlip?Math.PI:0});}
 const workerFallback=workerTrails.map((_,i)=>{
- const pivot=new THREE.Group(),material=new THREE.MeshStandardMaterial({color:i===0?0xe8b448:i===1?0xdad661:0xe09a52,roughness:.88});
+ const pivot=new THREE.Group(),material=new THREE.MeshStandardMaterial({color:[0xe8b448,0xdad661,0xe09a52,0xd1ab4c,0xb6cd60,0xf0bd4c,0xc6bb56][i%7],roughness:.88});
  function part(geometry,mat,x,y,z){const mesh=new THREE.Mesh(geometry,mat);mesh.position.set(x,y,z);mesh.castShadow=true;pivot.add(mesh);return mesh;}
  part(new THREE.CylinderGeometry(.22,.26,.72,10),material,0,1.02,0);
  part(new THREE.SphereGeometry(.165,10,8),new THREE.MeshStandardMaterial({color:0xb79573,roughness:1}),0,1.57,0);
@@ -845,7 +856,9 @@ function positionAlongRoute(points,phase,root){
  const a=points[index],b=points[index+1];
  root.position.set(a[0]+(b[0]-a[0])*blend,.18,a[1]+(b[1]-a[1])*blend);
  const dx=b[0]-a[0],dz=b[1]-a[1];
- if(Math.abs(dx)+Math.abs(dz)>.01)root.rotation.y=Math.atan2(dx,dz);
+ const moving=Math.abs(dx)+Math.abs(dz)>.01;
+ if(moving)root.rotation.y=Math.atan2(dx,dz);
+ return moving;
 }
 function syncTrafficVisibility(){
  trafficRoot.visible=trafficEnabled;
@@ -858,8 +871,8 @@ function syncTrafficVisibility(){
  document.getElementById('traffic-assets').classList.toggle('active',trafficAssetPreference);
  document.getElementById('traffic-simple').classList.toggle('active',!trafficAssetPreference);
  trafficStatus.textContent=!trafficEnabled?'人車動畫已隱藏。':
-  '3 位巡檢人員與 1 輛卡車循環運行｜人物：'+(workerReady&&trafficAssetPreference?'GLB 骨架動畫':'輕量人形')+
-  '｜卡車：'+(truckReady&&trafficAssetPreference?'Khronos 示範 GLB':'輕量運輸貨車')+'。';
+  '7 位巡檢人員與 1 輛卡車循環運行｜人物：'+(workerReady&&trafficAssetPreference?'GLB 骨架動畫':'輕量人形')+
+  '｜卡車：'+(truckReady&&trafficAssetPreference?'Kenney CC0 貨運車 GLB':'輕量運輸貨車')+'。';
 }
 document.getElementById('traffic-on').onclick=()=>{trafficEnabled=true;syncTrafficVisibility()};
 document.getElementById('traffic-off').onclick=()=>{trafficEnabled=false;syncTrafficVisibility()};
@@ -876,7 +889,7 @@ function loadTrafficAssets(){
   try{
    const walk=(gltf.animations||[]).find(c=>/^(walk|walking|walk_forward|walkcycle)$/i.test(c.name))
     ||(gltf.animations||[]).find(c=>/walk/i.test(c.name)&&!/back|left|right/i.test(c.name));
-   for(let i=0;i<3;i++){
+   for(let i=0;i<workerTrails.length;i++){
     const model=cloneSkinned(gltf.scene);model.updateMatrixWorld(true);
     const bounds=new THREE.Box3().setFromObject(model),height=bounds.getSize(new THREE.Vector3()).y;
     const scale=1.72/Math.max(height,.001);model.scale.multiplyScalar(scale);model.updateMatrixWorld(true);
@@ -886,14 +899,15 @@ function loadTrafficAssets(){
     workerAnchors[i].userData.face.add(model);
     if(walk){
      const mixer=new THREE.AnimationMixer(model);mixer.clipAction(walk).play();
-     mixer.update(i*.47);trafficMixers.push(mixer);
+     mixer.update(i*.47);trafficMixers[i]=mixer;
     }
    }
    workerReady=true;applyWorkerHeading();syncTrafficVisibility();
   }catch(error){console.warn('Worker model setup failed; keeping worker fallback',error);}
  },undefined,error=>console.warn('Quaternius worker GLB unavailable, using worker fallback',error));
- // This is a Khronos test asset; visually it is a branded milk truck, NOT a waste hauler.
- const truckURL='https://raw.githubusercontent.com/KhronosGroup/glTF-Sample-Assets/main/Models/CesiumMilkTruck/glTF-Binary/CesiumMilkTruck.glb';
+ // Kenney Car Kit - truck.glb. CC0; 184 KB model from public CC0 model archive.
+ // Avoid the branded Cesium Milk Truck; retain a self-contained low-poly fallback.
+ const truckURL='https://raw.githubusercontent.com/Papyszoo/CC0-Public-Domain-Models/main/packs/kenney-car-kit/models/truck/truck.glb';
  trafficLoader.load(truckURL,gltf=>{
   try{
    const model=gltf.scene;model.updateMatrixWorld(true);
@@ -912,17 +926,19 @@ function updateTraffic(delta){
  if(!trafficEnabled)return;
  trafficTime+=delta;
  for(let i=0;i<workerTrails.length;i++){
-  const progress=(trafficTime/(26+i*7)+i*.19)%1;
-  positionAlongRoute(workerTrails[i],progress,workerAnchors[i]);
+  const route=(typeof mode!=='undefined'&&mode==='wet'&&wetWorkerTrails[i])?wetWorkerTrails[i]:workerTrails[i];
+  const progress=(trafficTime/workerRates[i]+i*.137)%1;
+  const moving=positionAlongRoute(route,progress,workerAnchors[i]);
   const worker=workerFallback[i];
-  positionAlongRoute(workerTrails[i],progress,worker.pivot);
-  const stride=Math.sin(trafficTime*7+i*1.3)*.35;
+  positionAlongRoute(route,progress,worker.pivot);
+  const stride=moving?Math.sin(trafficTime*(6.4+i*.13)+i*1.3)*.35:0;
   worker.left.rotation.x=stride;worker.right.rotation.x=-stride;
   worker.leftArm.rotation.x=-stride;worker.rightArm.rotation.x=stride;
+  if(trafficMixers[i])trafficMixers[i].timeScale=moving?(.88+i*.04):0;
  }
  positionAlongRoute(vehicleTrail,(trafficTime/50)%1,truckAnchor);
  for(const w of simpleTruckAnchor.userData.wheels||[])w.rotation.x+=delta*2.5;
- if(trafficAssetPreference&&workerReady)for(const mixer of trafficMixers)mixer.update(delta);
+ if(trafficAssetPreference&&workerReady)for(const mixer of trafficMixers)if(mixer)mixer.update(delta);
 }
 
 const makeCommon=()=>{
