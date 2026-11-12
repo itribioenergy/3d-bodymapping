@@ -42,7 +42,8 @@
 <div class="mode"><button id="traffic-assets" class="active">工作員 GLB 優先</button><button id="traffic-simple">輕量示意</button></div>
 <div style="margin-top:7px"><label style="font-size:12px;cursor:pointer"><input type="checkbox" id="traffic-heading-flip"> 人物面向反轉 180°（必要時校正）</label></div>
 <p class="note" id="traffic-status" role="status">7 位巡檢人員與 1 輛卡車沿預設路線循環移動；GLB 載入失敗時使用輕量模型。</p>
-<p class="note">人物模型改用 Quaternius Worker（工地安全帽，CC0）；貨車改為 Kenney Car Kit 的 CC0 貨運車 GLB（概念比例，非實際廢棄物收運車）。場內人車路徑僅供視覺展示，尚未核對車輛迴轉半徑。</p>
+<p class="note">垃圾車素材：<a href="https://grabcad.com/library/garbage-truck-2" target="_blank" rel="noopener noreferrer">GrabCAD — Garbage Truck 2</a>，原 STL 降面與基本配色重建；使用者已確認使用授權。</p>
+<p class="note">人物模型改用 Quaternius Worker（工地安全帽，CC0）；貨車採用使用者授權的 GrabCAD Garbage Truck 2 STL 輕量化 GLB（約 0.82 MB、4.1 萬三角面），車頭白色、垃圾車廂綠色；材質為近似重建。場內人車路徑僅供視覺展示，尚未核對車輛迴轉半徑。</p>
 <h3>周邊環境</h3>
 <div class="mode envmode" style="flex-wrap:wrap"><button id="env-farm">🌴 熱帶農田</button><button id="env-industrial">🏭 鄉村工業區</button><button id="env-engineering" class="active">工程配置</button></div>
 <p class="note">周邊環境為視覺示意，不佔用一公頃基地；切換環境不會改變設備位置、尺寸與計算。</p>
@@ -872,7 +873,7 @@ function syncTrafficVisibility(){
  document.getElementById('traffic-simple').classList.toggle('active',!trafficAssetPreference);
  trafficStatus.textContent=!trafficEnabled?'人車動畫已隱藏。':
   '7 位巡檢人員與 1 輛卡車循環運行｜人物：'+(workerReady&&trafficAssetPreference?'GLB 骨架動畫':'輕量人形')+
-  '｜卡車：'+(truckReady&&trafficAssetPreference?'Kenney CC0 貨運車 GLB':'輕量運輸貨車')+'。';
+  '｜卡車：'+(truckReady&&trafficAssetPreference?'GrabCAD 垃圾收運車 GLB':'輕量運輸貨車')+'。';
 }
 document.getElementById('traffic-on').onclick=()=>{trafficEnabled=true;syncTrafficVisibility()};
 document.getElementById('traffic-off').onclick=()=>{trafficEnabled=false;syncTrafficVisibility()};
@@ -905,9 +906,10 @@ function loadTrafficAssets(){
    workerReady=true;applyWorkerHeading();syncTrafficVisibility();
   }catch(error){console.warn('Worker model setup failed; keeping worker fallback',error);}
  },undefined,error=>console.warn('Quaternius worker GLB unavailable, using worker fallback',error));
- // Kenney Car Kit - truck.glb. CC0; 184 KB model from public CC0 model archive.
- // Avoid the branded Cesium Milk Truck; retain a self-contained low-poly fallback.
- const truckURL='https://raw.githubusercontent.com/Papyszoo/CC0-Public-Domain-Models/main/packs/kenney-car-kit/models/truck/truck.glb';
+ // The user-provided GrabCAD Garbage Truck 2 STL, simplified to 41,199 faces and a GLB.
+ // License confirmed by project owner. This is a local first-party project asset.
+ // Original source orientation: +X points toward cab; baked GLB faces +Z.
+ const truckURL='./assets/grabcad-garbage-truck-optimized.glb';
  trafficLoader.load(truckURL,gltf=>{
   try{
    const model=gltf.scene;model.updateMatrixWorld(true);
@@ -918,8 +920,8 @@ function loadTrafficAssets(){
    model.position.x-=ctr.x;model.position.z-=ctr.z;model.position.y-=scaled.min.y;
    model.traverse(o=>{if(o.isMesh){o.castShadow=true;o.receiveShadow=true}});
    demoTruckAnchor.add(model);truckReady=true;syncTrafficVisibility();
-  }catch(error){console.warn('Demo truck setup failed; keeping waste truck fallback',error);}
- },undefined,error=>console.warn('Demo truck GLB unavailable; using simple truck',error));
+  }catch(error){console.warn('Imported garbage truck setup failed; using procedural fallback',error);}
+ },undefined,error=>console.warn('GrabCAD garbage truck GLB unavailable; using simple truck',error));
 }
 loadTrafficAssets();
 function updateTraffic(delta){
