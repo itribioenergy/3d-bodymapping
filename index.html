@@ -1017,7 +1017,7 @@ const villageModels=[
 ];
 function loadVillageModels(){
  for(const {file,length,slots} of villageModels){
-  trafficLoader.load('./assets/'+file+'.glb',({scene:model})=>{
+  trafficLoader.load('./assets/'+file+'-repaired.glb',({scene:model})=>{
    model.updateMatrixWorld(true);
    const bounds=new THREE.Box3().setFromObject(model);
    const size=bounds.getSize(new THREE.Vector3());
