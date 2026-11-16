@@ -955,6 +955,54 @@ function fixGarbageTruckEnclosure(model){
  model.add(cabRoof);
 }
 
+// The STL has no material assignments. Trace the molded cab details in
+// front and side projection, then paint the original triangles.
+function colorGarbageTruckCab(model){
+ const cabColors={
+  glass:new THREE.Color(0x293e4b),
+  grille:new THREE.Color(0x273037),
+  bumper:new THREE.Color(0x374047),
+  lamp:new THREE.Color(0xe7edf0),
+  indicator:new THREE.Color(0xd68c35)
+ };
+ const windshield=[[-.80,2.09],[.80,2.09],[.82,1.68],[.80,1.50],
+  [.68,1.45],[0,1.44],[-.68,1.45],[-.80,1.50],[-.82,1.68]];
+ const sideWindow=[[3.06,2.085],[4.25,2.085],[4.37,1.92],[4.44,1.45],
+  [4.30,1.48],[3.20,1.65],[3.08,1.71]];
+ const inPanel=(x,y,outline)=>{
+  let inside=false;
+  for(let i=0,j=outline.length-1;i<outline.length;j=i++){
+   const [x1,y1]=outline[i], [x2,y2]=outline[j];
+   if((y1>y)!==(y2>y) && x<(x2-x1)*(y-y1)/(y2-y1)+x1)inside=!inside;
+  }
+  return inside;
+ };
+ model.traverse(mesh=>{
+  if(!mesh.isMesh || !mesh.geometry.hasAttribute('color'))return;
+  const geometry=mesh.geometry.toNonIndexed();
+  const positions=geometry.getAttribute('position');
+  const colors=geometry.getAttribute('color');
+  for(let i=0;i<positions.count;i+=3){
+   const x=(positions.getX(i)+positions.getX(i+1)+positions.getX(i+2))/3;
+   const y=(positions.getY(i)+positions.getY(i+1)+positions.getY(i+2))/3;
+   const z=(positions.getZ(i)+positions.getZ(i+1)+positions.getZ(i+2))/3;
+   if(z<2.88)continue;
+   const side=Math.abs(x);
+   let paint;
+   if(z>4.33 && inPanel(x,y,windshield))paint=cabColors.glass;
+   else if(side>.76 && inPanel(z,y,sideWindow))paint=cabColors.glass;
+   else if(z>4.21 && z<4.43 && y>1.48 && y<1.93 && side>.92)paint=cabColors.bumper;
+   else if(z>4.30 && side<.64 && y>.83 && y<1.02)paint=cabColors.grille;
+   else if(z>4.48 && side>.57 && side<.84 && y>.51 && y<.67)paint=cabColors.lamp;
+   else if(z>4.45 && side>=.84 && side<.94 && y>.52 && y<.64)paint=cabColors.indicator;
+   if(!paint)continue;
+   for(let j=i;j<i+3;j++)colors.setXYZ(j,paint.r,paint.g,paint.b);
+  }
+  if(!geometry.hasAttribute('normal'))geometry.computeVertexNormals();
+  mesh.geometry=geometry;
+ });
+}
+
 function loadTrafficAssets(){
  // Quaternius Ultimate Modular Men Worker, CC0; public preserved GLB source.
  // This replaces the military Soldier with a normal hard-hat industrial worker.
@@ -986,6 +1034,7 @@ function loadTrafficAssets(){
  trafficLoader.load(truckURL,gltf=>{
   try{
    const model=gltf.scene;model.updateMatrixWorld(true);
+   colorGarbageTruckCab(model);
    fixGarbageTruckEnclosure(model);
    model.updateMatrixWorld(true);
    const bb=new THREE.Box3().setFromObject(model),size=bb.getSize(new THREE.Vector3());
