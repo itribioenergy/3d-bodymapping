@@ -909,30 +909,50 @@ function fixGarbageTruckEnclosure(model){
  // Reinforced seam immediately behind the white cab.
  panel(2.21,.09,.12,0,1.40,2.40,edge);
 
- // The originally supplied STL has an open cab roof. Repair the CAB (not
- // the green compactor) with a white top that follows its approximate outline.
- // Cab lies at +Z; all measurements are in the original, unscaled GLB space.
- const cabWhite=new THREE.MeshStandardMaterial({
-  color:0xf0f0ee,metalness:.10,roughness:.69,side:THREE.DoubleSide
- });
- const cabBlack=new THREE.MeshStandardMaterial({
-  color:0x20282b,metalness:.18,roughness:.57,side:THREE.DoubleSide
- });
- // Lower the cab roof to meet the existing STL windshield and door frame.
- // A single offset keeps all white roof segments and the black visor aligned.
- const cabRoofOffsetY=-0.42;
- const cabRoofY=y=>y+cabRoofOffsetY;
- // Split the cap into a wide center and two narrower, slightly lower edges.
- panel(1.80,.13,1.70,0,cabRoofY(2.83),3.53,cabWhite);
- for(const side of [-1,1]){
-  const shoulder=panel(.18,.095,1.62,side*.97,cabRoofY(2.77),3.53,cabWhite);
-  shoulder.rotation.z=-side*.10;
-  panel(.065,.25,1.28,side*1.035,cabRoofY(2.61),3.57,cabWhite);
+ // Cab roof in unscaled GLB coordinates. The perimeter follows the STL's
+ // window frame, including the curved windshield and rounded rear corners.
+ const cabOutline=[
+  [0,2.886],[.62,2.886],[.74,2.897],[.81,2.925],[.845,2.975],
+  [.85,3.13],[.85,3.42],[.84,3.75],[.83,4.02],[.818,4.21],
+  [.79,4.30],[.74,4.34],[.64,4.38],[.48,4.416],[.24,4.442],[0,4.448]
+ ];
+ const outline=cabOutline.concat(cabOutline.slice(1,-1).reverse().map(([x,z])=>[-x,z]));
+ const cabMidZ=3.66;
+ // Begin inside the window frame, then round into a shallow crown.
+ const roofSections=[
+  [.98,2.085],[1.005,2.125],[.98,2.168],[.91,2.209],
+  [.76,2.239],[.48,2.268],[.22,2.281]
+ ];
+ const vertices=[];
+ const triangles=[];
+ const count=outline.length;
+ for(const [scale,y] of roofSections){
+  for(const [x,z] of outline){
+   vertices.push(x*scale,y,cabMidZ+(z-cabMidZ)*scale);
+  }
  }
- // Front windshield upper trim tracks the adjusted roof height.
- panel(2.00,.07,.13,0,cabRoofY(2.71),4.34,cabBlack);
- // The rear seam also follows the roof, avoiding a detached white stripe.
- panel(2.02,.12,.17,0,cabRoofY(2.79),2.71,cabWhite);
+ for(let section=1;section<roofSections.length;section++){
+  for(let i=0;i<count;i++){
+   const a=(section-1)*count+i,b=(section-1)*count+(i+1)%count;
+   triangles.push(a,a+count,b,b,a+count,b+count);
+  }
+ }
+ const underside=vertices.length/3;
+ vertices.push(0,roofSections[0][1],cabMidZ);
+ const crown=vertices.length/3;
+ vertices.push(0,2.286,cabMidZ);
+ const inner=(roofSections.length-1)*count;
+ for(let i=0;i<count;i++){
+  const next=(i+1)%count;
+  triangles.push(underside,i,next,crown,inner+next,inner+i);
+ }
+ const cabRoofGeometry=new THREE.BufferGeometry();
+ cabRoofGeometry.setAttribute('position',new THREE.Float32BufferAttribute(vertices,3));
+ cabRoofGeometry.setIndex(triangles);
+ cabRoofGeometry.computeVertexNormals();
+ const cabRoof=new THREE.Mesh(cabRoofGeometry,mat(0xf0f0ee));
+ cabRoof.name='Driver cab roof';
+ model.add(cabRoof);
 }
 
 function loadTrafficAssets(){
