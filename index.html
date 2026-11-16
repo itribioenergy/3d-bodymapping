@@ -179,12 +179,17 @@ function createSurroundings(kind){
  scene.fog=new THREE.Fog(scene.background,210,400);
  // Surrounding land is 290x260m, while the project boundary remains 100x100m.
  envRect(surroundings,50,50,290,260,-.48,kind==='farm'?0x7eab6d:0x82957b);
+ // Continue the terrain beneath the roads past the fog range of the normal site views.
+ for(const direction of [-1,1]){
+  const extension=villageRoadExtent-145;
+  envRect(surroundings,50+direction*(145+extension/2),50,extension,260,-.48,kind==='farm'?0x7eab6d:0x82957b);
+ }
  // Four narrow landscape strips around the site boundary; no objects inside the site.
  const sideCoords=[-13,113];
  sideCoords.forEach(v=>{envRect(surroundings,v,50,19,100,-.36,kind==='farm'?0x649a4e:0x71855d);envRect(surroundings,50,v,100,19,-.36,kind==='farm'?0x649a4e:0x71855d);});
- const pavedLoop=new THREE.Group();
- drawRoute(villageRoad,kind==='farm'?4.2:6,-.18,kind==='farm'?0x8b8e81:0x666f72,pavedLoop);
- surroundings.add(pavedLoop);
+ for(const z of villageRoadRows){
+  envRect(surroundings,50,z,2*villageRoadExtent,6.4,-.24,kind==='farm'?0x8b8e81:0x666f72);
+ }
  if(kind==='farm'){
   // Rice fields represented by rectangular paddy plots + fine crop stripes.
   for(let row=0;row<5;row++)for(let col=0;col<6;col++){
@@ -212,7 +217,7 @@ function createSurroundings(kind){
   [[-12,-27],[20,-27],[95,-27],[120,17],[120,104],[-20,107],[-23,45],[135,137],[80,137]].forEach((p,i)=>envTree(surroundings,p[0],p[1],6+i%3, i%3===0?'palm':'round'));
  }
  // Entrance approach on the southern edge, without claiming an actual site-road design.
- envRect(surroundings,50,112,10,24,-.25,0x818889);
+ envRect(surroundings,50,115,10,30,-.25,0x818889);
  // Perimeter fence runs directly outside the conceptual 1 hectare boundary.
  const fenceMat=new THREE.LineBasicMaterial({color:0x8c9f99,transparent:true,opacity:.9});
  const fencePoints=[];
@@ -910,9 +915,10 @@ for(const z of [6,40,62,86,97]){
  routeMarkings.add(arrow);
 }
 box(routeMarkings,deliveryLaneX,25,2.7,.25,.015,0xf1e9da,.094);
-// The north leg runs in the gap between paddy rows. The east leg clears
-// the industrial yards and the delivery-truck loop.
-const villageRoad=roundedCircuit([[-88,-20],[169,-20],[169,130],[-88,130]],10,-.18);
+// These through roads extend beyond the visible landscape in either direction.
+const villageRoadRows=[-20,130];
+const villageRoadExtent=950;
+const villageRoadLength=2*villageRoadExtent;
 const villageTraffic=new THREE.Group();
 trafficRoot.add(villageTraffic);
 const villagePaint=new THREE.MeshStandardMaterial({roughness:.56});
@@ -953,21 +959,35 @@ function buildVillageVehicle(kind,color){
  villageTraffic.add(actor);
  return {actor,wheels};
 }
-const villageVehicles=[
- buildVillageVehicle('pickup',0x769980),
- buildVillageVehicle('van',0xe5dfcf),
- buildVillageVehicle('car',0x7794ac),
- buildVillageVehicle('pickup',0xa26842)
-];
+const villageLanes=[
+ {z:villageRoadRows[0]+1.6,direction:1,speed:10,phase:0,kind:'pickup',color:0x769980},
+ {z:villageRoadRows[0]-1.6,direction:-1,speed:9,phase:.37,kind:'van',color:0xe5dfcf},
+ {z:villageRoadRows[1]+1.6,direction:1,speed:11,phase:.71,kind:'car',color:0x7794ac},
+ {z:villageRoadRows[1]-1.6,direction:-1,speed:9.5,phase:.16,kind:'pickup',color:0xa26842}
+].map(lane=>{
+ const vehicles=Array.from({length:7},()=>buildVillageVehicle(lane.kind,lane.color));
+ for(const {actor} of vehicles)actor.rotation.y=lane.direction*Math.PI/2;
+ return {...lane,vehicles};
+});
+const villageViewDirection=new THREE.Vector3();
 function updateVillageTraffic(delta){
  if(!villageTraffic.visible)return;
- const speed=8;
- // A common speed and evenly spaced phases prevent vehicles from catching up.
- const length=villageRoad.getLength();
- villageVehicles.forEach(({actor,wheels},i)=>{
-  placeOnRoute(villageRoad,trafficTime*speed+length*(i+.45)/villageVehicles.length,actor);
-  for(const wheel of wheels)wheel.rotateY(-speed*delta/.32);
- });
+ camera.getWorldDirection(villageViewDirection);
+ for(const {z,direction,speed,phase,vehicles} of villageLanes){
+  const spacing=villageRoadLength/vehicles.length;
+  const offset=trafficTime*speed+phase*spacing;
+  vehicles.forEach(({actor,wheels},i)=>{
+   const distance=(offset+i*spacing)%villageRoadLength;
+   const x=50+direction*(distance-villageRoadExtent);
+   const depth=(x-camera.position.x)*villageViewDirection.x
+    +(-.18-camera.position.y)*villageViewDirection.y
+    +(z-camera.position.z)*villageViewDirection.z;
+   // Leave enough margin for the whole vehicle to clear the fog and near plane.
+   actor.visible=depth>-4&&depth<scene.fog.far+4;
+   actor.position.set(x,-.18,z);
+   if(actor.visible)for(const wheel of wheels)wheel.rotateY(-speed*delta/.32);
+  });
+ }
 }
 
 const workerSpeeds=[1.14,1.25,1.08,1.15,1.22,1.12,1.2];
@@ -1027,7 +1047,7 @@ function syncTrafficVisibility(){
  document.getElementById('traffic-simple').classList.toggle('active',!trafficAssetPreference);
  trafficStatus.textContent=!trafficEnabled?'人車動畫已隱藏。':
   '7 位巡檢人員與 1 輛卡車循環運行｜人物：'+(workerReady&&trafficAssetPreference?'GLB 骨架動畫':'輕量人形')+
-  '｜卡車：'+(truckReady&&trafficAssetPreference?'GrabCAD 垃圾收運車 GLB':'輕量運輸貨車')+ (villageTraffic.visible?'｜場外車輛 4 輛':'')+'。';
+  '｜卡車：'+(truckReady&&trafficAssetPreference?'GrabCAD 垃圾收運車 GLB':'輕量運輸貨車')+ (villageTraffic.visible?'｜鄉村道路雙向車流':'')+'。';
 }
 document.getElementById('traffic-on').onclick=()=>{trafficEnabled=true;syncTrafficVisibility()};
 document.getElementById('traffic-off').onclick=()=>{trafficEnabled=false;syncTrafficVisibility()};
@@ -1218,7 +1238,6 @@ function updateTraffic(delta){
   worker.leftArm.rotation.x=-stride;worker.rightArm.rotation.x=stride;
   if(trafficMixers[i])trafficMixers[i].timeScale=workerSpeeds[i]/1.2;
  }
- updateVillageTraffic(delta);
  const delivery=deliveryMotion(trafficTime);
  placeOnRoute(deliveryRoute,delivery.distance,truckAnchor);
  for(const wheel of simpleTruckAnchor.userData.wheels)wheel.rotateY(-delivery.speed*delta/.58);
@@ -1575,7 +1594,8 @@ function render(now){
   }
   if(Math.floor(now/250)!==Math.floor((now-16)/250)&&tourRunning)refreshTourUI();
  }
- ctl.update();renderer.render(scene,camera);labelRenderer.render(scene,camera);
+ ctl.update();if(trafficEnabled)updateVillageTraffic(trafficDelta);
+ renderer.render(scene,camera);labelRenderer.render(scene,camera);
 }
 requestAnimationFrame(render);
 </script></body></html>
