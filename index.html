@@ -216,12 +216,15 @@ function createSurroundings(kind){
   for(let i=0;i<4;i++){envRect(surroundings,125+i*5,75,2.8,9,-.17,i%2?0x9eaaac:0xb6aa95);}
   [[-12,-27],[20,-27],[95,-27],[120,17],[120,104],[-20,107],[-23,45],[135,137],[80,137]].forEach((p,i)=>envTree(surroundings,p[0],p[1],6+i%3, i%3===0?'palm':'round'));
  }
+ const accessColor=kind==='farm'?0x8b8e81:0x666f72;
+ drawRoute(deliveryRoute,6,-.183,accessColor,surroundings,deliveryLengths[0],deliveryLengths[1]-deliveryEntryZ-deliveryTurn);
+ drawRoute(deliveryRoute,6,-.183,accessColor,surroundings,deliveryLengths[2]-(deliveryExitZ-deliveryTurn-100),deliveryLengths[3]);
  // Entrance approach on the southern edge, without claiming an actual site-road design.
  envRect(surroundings,50,115,10,30,-.25,0x818889);
  // Perimeter fence runs directly outside the conceptual 1 hectare boundary.
  const fenceMat=new THREE.LineBasicMaterial({color:0x8c9f99,transparent:true,opacity:.9});
  const fencePoints=[];
- for(const [ax,az,bx,bz] of [[0,0,96.5,0],[0,0,0,100],[100,0,100,100],[0,100,44,100],[56,100,96.5,100]]){
+ for(const [ax,az,bx,bz] of [[0,0,96.5,0],[0,0,0,100],[100,0,100,100],[0,100,44,100],[56,100,95,100]]){
   fencePoints.push(new THREE.Vector3(ax,.75,az),new THREE.Vector3(bx,.75,bz));
   fencePoints.push(new THREE.Vector3(ax,1.5,az),new THREE.Vector3(bx,1.5,bz));
  }
@@ -818,7 +821,7 @@ const sharedPatrolPoints=[
  [[69,40],[70.8,40],[70.8,93],[69,93]]
 ];
 const deliveryLaneX=98.4;
-const deliveryPoints=[[deliveryLaneX,-12],[deliveryLaneX,112],[126,112],[126,-12]];
+const villageRoadRows=[-20,130];
 
 function roundedCircuit(points,radius,height=.18){
  const corners=points.map(([x,z])=>new THREE.Vector3(x,height,z));
@@ -842,15 +845,30 @@ const patrolRoutes={
  dry:[...patrolPoints.dry.map(points=>roundedCircuit(points,1.2)),...sharedPatrols],
  wet:[...patrolPoints.wet.map(points=>roundedCircuit(points,1.2)),...sharedPatrols]
 };
-const deliveryRoute=roundedCircuit(deliveryPoints,12);
+const deliveryEntryZ=villageRoadRows[0]+1.6;
+const deliveryExitZ=villageRoadRows[1]+1.6;
+const deliveryTurn=9;
+const deliveryStartX=-700,deliveryEndX=800;
+const deliveryRoute=new THREE.CurvePath();
+const deliveryPoint=(x,z)=>new THREE.Vector3(x,0,z);
+function addDeliveryLine(x,z,x2,z2){
+ deliveryRoute.add(new THREE.LineCurve3(deliveryPoint(x,z),deliveryPoint(x2,z2)));
+}
+addDeliveryLine(deliveryStartX,deliveryEntryZ,deliveryLaneX-deliveryTurn,deliveryEntryZ);
+deliveryRoute.add(new THREE.QuadraticBezierCurve3(deliveryPoint(deliveryLaneX-deliveryTurn,deliveryEntryZ),deliveryPoint(deliveryLaneX,deliveryEntryZ),deliveryPoint(deliveryLaneX,deliveryEntryZ+deliveryTurn)));
+addDeliveryLine(deliveryLaneX,deliveryEntryZ+deliveryTurn,deliveryLaneX,deliveryExitZ-deliveryTurn);
+deliveryRoute.add(new THREE.QuadraticBezierCurve3(deliveryPoint(deliveryLaneX,deliveryExitZ-deliveryTurn),deliveryPoint(deliveryLaneX,deliveryExitZ),deliveryPoint(deliveryLaneX+deliveryTurn,deliveryExitZ)));
+addDeliveryLine(deliveryLaneX+deliveryTurn,deliveryExitZ,deliveryEndX,deliveryExitZ);
+const deliveryLengths=deliveryRoute.getCurveLengths();
 const deliveryLength=deliveryRoute.getLength();
-// The unloading stop is on the straight inbound leg, next to the shredder.
-const firstDeliveryCurves=deliveryRoute.getCurveLengths();
-const deliveryStopDistance=firstDeliveryCurves[1]+25-deliveryRoute.curves[2].v1.z;
-const deliverySpeed=4;
-const deliveryRamp=1.6;
-const deliveryDwell=5;
-const deliveryDriveTime=deliveryLength/deliverySpeed+deliveryRamp;
+const deliveryStopDistance=deliveryLengths[1]+25-(deliveryEntryZ+deliveryTurn);
+const deliverySpeed=6,deliveryRamp=2,deliveryDwell=5,deliveryAway=12;
+const deliveryOuterSpeed=12;
+const deliveryInboundTime=deliveryLengths[0]/deliveryOuterSpeed;
+const deliveryOutboundTime=(deliveryLength-deliveryLengths[3])/deliveryOuterSpeed;
+const deliveryStopTime=(deliveryStopDistance-deliveryLengths[0])/deliverySpeed+deliveryRamp/2;
+const deliveryLeaveTime=(deliveryLengths[3]-deliveryStopDistance)/deliverySpeed+deliveryRamp/2;
+const deliveryTripTime=deliveryInboundTime+deliveryStopTime+deliveryDwell+deliveryLeaveTime+deliveryOutboundTime;
 const routePoint=new THREE.Vector3(),routeBack=new THREE.Vector3(),routeAhead=new THREE.Vector3();
 const routeFraction=(distance,length)=>((distance%length)+length)%length/length;
 function placeOnRoute(path,distance,actor){
@@ -862,13 +880,36 @@ function placeOnRoute(path,distance,actor){
  actor.rotation.y=Math.atan2(routeAhead.x-routeBack.x,routeAhead.z-routeBack.z);
 }
 function deliveryMotion(time){
- const elapsed=(time+deliveryDwell+deliveryDriveTime-9)%(deliveryDriveTime+deliveryDwell)-deliveryDwell;
- const rampDistance=.5*deliverySpeed*deliveryRamp;
- if(elapsed<=0)return {distance:deliveryStopDistance,speed:0};
- if(elapsed<deliveryRamp)return {distance:deliveryStopDistance+.5*deliverySpeed*elapsed*elapsed/deliveryRamp,speed:deliverySpeed*elapsed/deliveryRamp};
- const remaining=deliveryDriveTime-elapsed;
- if(remaining<deliveryRamp)return {distance:deliveryStopDistance+deliveryLength-.5*deliverySpeed*remaining*remaining/deliveryRamp,speed:deliverySpeed*remaining/deliveryRamp};
- return {distance:deliveryStopDistance+rampDistance+deliverySpeed*(elapsed-deliveryRamp),speed:deliverySpeed};
+ let elapsed=(time+deliveryInboundTime-9)%(deliveryTripTime+deliveryAway);
+ if(elapsed>=deliveryTripTime)return null;
+ if(elapsed<deliveryInboundTime)return {distance:elapsed*deliveryOuterSpeed,speed:deliveryOuterSpeed};
+ elapsed-=deliveryInboundTime;
+ if(elapsed<deliveryStopTime){
+  const remaining=deliveryStopTime-elapsed;
+  const speed=deliverySpeed*Math.min(remaining/deliveryRamp,1);
+  const distanceToStop=remaining<deliveryRamp ? .5*speed*remaining : deliverySpeed*(remaining-deliveryRamp/2);
+  return {distance:deliveryStopDistance-distanceToStop,speed};
+ }
+ elapsed-=deliveryStopTime;
+ if(elapsed<deliveryDwell)return {distance:deliveryStopDistance,speed:0};
+ elapsed-=deliveryDwell;
+ if(elapsed<deliveryLeaveTime){
+  const speed=deliverySpeed*Math.min(elapsed/deliveryRamp,1);
+  const distanceFromStop=elapsed<deliveryRamp ? .5*speed*elapsed : deliverySpeed*(elapsed-deliveryRamp/2);
+  return {distance:deliveryStopDistance+distanceFromStop,speed};
+ }
+ return {distance:deliveryLengths[3]+(elapsed-deliveryLeaveTime)*deliveryOuterSpeed,speed:deliveryOuterSpeed};
+}
+function deliveryHeight(z){
+ return THREE.MathUtils.lerp(.091,-.18,THREE.MathUtils.clamp(Math.max(-z,z-100)/6,0,1));
+}
+function placeDeliveryTruck(actor,distance){
+ const fraction=d=>THREE.MathUtils.clamp(d/deliveryLength,0,1);
+ deliveryRoute.getPoint(fraction(distance),routePoint);
+ deliveryRoute.getPoint(fraction(distance-.15),routeBack);
+ deliveryRoute.getPoint(fraction(distance+.15),routeAhead);
+ actor.position.set(routePoint.x,deliveryHeight(routePoint.z),routePoint.z);
+ actor.rotation.y=Math.atan2(routeAhead.x-routeBack.x,routeAhead.z-routeBack.z);
 }
 const routeMarkings=new THREE.Group();
 scene.add(routeMarkings);
@@ -880,15 +921,16 @@ routeButton.onclick=()=>{
  routeButton.classList.toggle('active',routeMarkings.visible);
  routeButton.setAttribute('aria-pressed',String(routeMarkings.visible));
 };
-function drawRoute(path,width,height,color,parent){
+function drawRoute(path,width,height,color,parent,start=0,end=path.getLength()){
+ const fraction=(distance)=>start===0&&end===path.getLength()?routeFraction(distance,end):THREE.MathUtils.clamp(distance/path.getLength(),0,1);
  const side=new THREE.Vector3();
  const vertices=[],indices=[];
- const steps=Math.ceil(path.getLength()*2);
+ const steps=Math.ceil((end-start)*2);
  for(let i=0;i<=steps;i++){
-  const distance=i/steps*path.getLength();
-  path.getPoint(routeFraction(distance,path.getLength()),routePoint);
-  path.getPoint(routeFraction(distance-.15,path.getLength()),routeBack);
-  path.getPoint(routeFraction(distance+.15,path.getLength()),routeAhead);
+  const distance=start+i/steps*(end-start);
+  path.getPoint(fraction(distance),routePoint);
+  path.getPoint(fraction(distance-.15),routeBack);
+  path.getPoint(fraction(distance+.15),routeAhead);
   side.set(routeAhead.z-routeBack.z,0,routeBack.x-routeAhead.x).normalize().multiplyScalar(width/2);
   vertices.push(routePoint.x+side.x,height,routePoint.z+side.z,routePoint.x-side.x,height,routePoint.z-side.z);
   if(i>0){
@@ -904,7 +946,7 @@ function drawRoute(path,width,height,color,parent){
  surface.receiveShadow=true;
  parent.add(surface);
 }
-drawRoute(deliveryRoute,3.15,.091,colors.road,routeMarkings);
+box(routeMarkings,deliveryLaneX,50,3.15,100,.015,colors.road,.0835);
 for(const path of sharedPatrols)drawRoute(path,.65,.094,colors.walk,routeMarkings);
 for(const [kind,paths] of Object.entries(patrolRoutes)){
  for(const path of paths.slice(0,patrolPoints[kind].length))drawRoute(path,.65,.094,colors.walk,patrolMarkings[kind]);
@@ -916,7 +958,6 @@ for(const z of [6,40,62,86,97]){
 }
 box(routeMarkings,deliveryLaneX,25,2.7,.25,.015,0xf1e9da,.094);
 // These through roads extend beyond the visible landscape in either direction.
-const villageRoadRows=[-20,130];
 const villageRoadExtent=950;
 const villageRoadLength=2*villageRoadExtent;
 const villageTraffic=new THREE.Group();
@@ -969,6 +1010,36 @@ const villageLanes=[
  for(const {actor} of vehicles)actor.rotation.y=lane.direction*Math.PI/2;
  return {...lane,vehicles};
 });
+const villageModels=[
+ {file:'acura-mdx',length:4.87,slots:[[0,0],[3,2],[1,4]]},
+ {file:'jaguar-f-pace',length:4.73,slots:[[1,1],[2,3],[3,5]]},
+ {file:'tanker-truck',length:9.8,slots:[[0,2],[2,1]]}
+];
+function loadVillageModels(){
+ for(const {file,length,slots} of villageModels){
+  trafficLoader.load('./assets/'+file+'.glb',({scene:model})=>{
+   model.updateMatrixWorld(true);
+   const bounds=new THREE.Box3().setFromObject(model);
+   const size=bounds.getSize(new THREE.Vector3());
+   const scale=length/size.z;
+   const center=bounds.getCenter(new THREE.Vector3());
+   model.scale.multiplyScalar(scale);
+   model.position.set(-center.x*scale,-bounds.min.y*scale,-center.z*scale);
+   model.traverse(object=>{
+    if(!object.isMesh)return;
+    if(!object.geometry.attributes.normal)object.geometry.computeVertexNormals();
+    object.castShadow=true;object.receiveShadow=true;
+   });
+   for(const [laneIndex,vehicleIndex] of slots){
+    const vehicle=villageLanes[laneIndex].vehicles[vehicleIndex];
+    vehicle.fallback=vehicle.actor.children.slice();
+    vehicle.model=model.clone();
+    vehicle.actor.add(vehicle.model);
+   }
+   syncTrafficVisibility();
+  },undefined,error=>console.warn('Vehicle model unavailable:',file,error));
+ }
+}
 const villageViewDirection=new THREE.Vector3();
 function updateVillageTraffic(delta){
  if(!villageTraffic.visible)return;
@@ -985,7 +1056,7 @@ function updateVillageTraffic(delta){
    // Leave enough margin for the whole vehicle to clear the fog and near plane.
    actor.visible=depth>-4&&depth<scene.fog.far+4;
    actor.position.set(x,-.18,z);
-   if(actor.visible)for(const wheel of wheels)wheel.rotateY(-speed*delta/.32);
+   if(actor.visible&&wheels[0].visible)for(const wheel of wheels)wheel.rotateY(-speed*delta/.32);
   });
  }
 }
@@ -1037,6 +1108,11 @@ simpleTruckAnchor.rotation.y=Math.PI;
 function syncTrafficVisibility(){
  trafficRoot.visible=trafficEnabled;
  villageTraffic.visible=environmentMode!=='engineering';
+ for(const {vehicles} of villageLanes)for(const vehicle of vehicles){
+  if(!vehicle.model)continue;
+  vehicle.model.visible=trafficAssetPreference;
+  for(const mesh of vehicle.fallback)mesh.visible=!trafficAssetPreference;
+ }
  sharedWorkers.visible=trafficEnabled&&trafficAssetPreference&&workerReady;
  proceduralWorkers.visible=trafficEnabled&&!(trafficAssetPreference&&workerReady);
  demoTruckAnchor.visible=trafficEnabled&&trafficAssetPreference&&truckReady;
@@ -1046,7 +1122,7 @@ function syncTrafficVisibility(){
  document.getElementById('traffic-assets').classList.toggle('active',trafficAssetPreference);
  document.getElementById('traffic-simple').classList.toggle('active',!trafficAssetPreference);
  trafficStatus.textContent=!trafficEnabled?'人車動畫已隱藏。':
-  '7 位巡檢人員與 1 輛卡車循環運行｜人物：'+(workerReady&&trafficAssetPreference?'GLB 骨架動畫':'輕量人形')+
+  '7 位巡檢人員與 1 輛垃圾車進出場｜人物：'+(workerReady&&trafficAssetPreference?'GLB 骨架動畫':'輕量人形')+
   '｜卡車：'+(truckReady&&trafficAssetPreference?'GrabCAD 垃圾收運車 GLB':'輕量運輸貨車')+ (villageTraffic.visible?'｜鄉村道路雙向車流':'')+'。';
 }
 document.getElementById('traffic-on').onclick=()=>{trafficEnabled=true;syncTrafficVisibility()};
@@ -1222,6 +1298,7 @@ function loadTrafficAssets(){
  },undefined,error=>console.warn('GrabCAD garbage truck GLB unavailable; using simple truck',error));
 }
 loadTrafficAssets();
+loadVillageModels();
 function updateTraffic(delta){
  if(!trafficEnabled)return;
  trafficTime+=delta;
@@ -1238,8 +1315,12 @@ function updateTraffic(delta){
   worker.leftArm.rotation.x=-stride;worker.rightArm.rotation.x=stride;
   if(trafficMixers[i])trafficMixers[i].timeScale=workerSpeeds[i]/1.2;
  }
- const delivery=deliveryMotion(trafficTime);
- placeOnRoute(deliveryRoute,delivery.distance,truckAnchor);
+ let delivery=deliveryMotion(trafficTime);
+ truckAnchor.visible=Boolean(delivery);
+ if(delivery){
+  placeDeliveryTruck(truckAnchor,delivery.distance);
+  if(environmentMode==='engineering')truckAnchor.visible=truckAnchor.position.z>=-4&&truckAnchor.position.z<=104;
+ }else delivery={speed:0};
  for(const wheel of simpleTruckAnchor.userData.wheels)wheel.rotateY(-delivery.speed*delta/.58);
  if(trafficAssetPreference&&workerReady)for(const mixer of trafficMixers)if(mixer)mixer.update(delta);
 }
