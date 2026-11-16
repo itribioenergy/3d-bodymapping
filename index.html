@@ -43,7 +43,7 @@
 <div style="margin-top:7px"><label style="font-size:12px;cursor:pointer"><input type="checkbox" id="traffic-heading-flip"> 人物面向反轉 180°（必要時校正）</label></div>
 <div class="mode" style="margin-top:7px"><button id="traffic-routes" class="active" aria-pressed="true">顯示人車路線</button></div>
 <p class="note" id="traffic-status" role="status">7 位巡檢人員與 1 輛卡車沿預設路線循環移動；GLB 載入失敗時使用輕量模型。</p>
-<p class="note">垃圾車沿東側由北進、南出，在前處理區停靠後由場外道路折返。黃線為巡檢步行路線，會隨乾式／濕式配置切換。</p>
+<p class="note">垃圾車沿東側由北進、南出，在前處理區停靠後由場外道路折返。黃線為巡檢步行路線，會隨乾式／濕式配置切換。農田與鄉村工業區另有 4 輛車沿場外道路循環。</p>
 <p class="note">垃圾車素材：<a href="https://grabcad.com/library/garbage-truck-2" target="_blank" rel="noopener noreferrer">GrabCAD — Garbage Truck 2</a>，原 STL 降面與基本配色重建；使用者已確認使用授權。</p>
 <p class="note">人物模型改用 Quaternius Worker（工地安全帽，CC0）；貨車採用使用者授權的 GrabCAD Garbage Truck 2 STL 輕量化 GLB（約 0.82 MB、4.1 萬三角面），車頭白色、垃圾車廂綠色；材質為近似重建。車道、停靠點及巡檢路線為概念示意，實際配置須核對車輛掃掠範圍與現場出入口。</p>
 <h3>周邊環境</h3>
@@ -177,11 +177,14 @@ function createSurroundings(kind){
  if(kind==='engineering'){scene.background=new THREE.Color(0x0b202b);scene.fog=new THREE.Fog(0x0b202b,170,340);return;}
  scene.background=new THREE.Color(kind==='farm'?0xb7dbed:0xc4d5dc);
  scene.fog=new THREE.Fog(scene.background,210,400);
- // Surrounding land is 250x250m, while the project boundary remains 100x100m.
- envRect(surroundings,50,50,260,260,-.48,kind==='farm'?0x7eab6d:0x82957b);
+ // Surrounding land is 290x260m, while the project boundary remains 100x100m.
+ envRect(surroundings,50,50,290,260,-.48,kind==='farm'?0x7eab6d:0x82957b);
  // Four narrow landscape strips around the site boundary; no objects inside the site.
  const sideCoords=[-13,113];
  sideCoords.forEach(v=>{envRect(surroundings,v,50,19,100,-.36,kind==='farm'?0x649a4e:0x71855d);envRect(surroundings,50,v,100,19,-.36,kind==='farm'?0x649a4e:0x71855d);});
+ const pavedLoop=new THREE.Group();
+ drawRoute(villageRoad,kind==='farm'?4.2:6,-.18,kind==='farm'?0x8b8e81:0x666f72,pavedLoop);
+ surroundings.add(pavedLoop);
  if(kind==='farm'){
   // Rice fields represented by rectangular paddy plots + fine crop stripes.
   for(let row=0;row<5;row++)for(let col=0;col<6;col++){
@@ -192,16 +195,12 @@ function createSurroundings(kind){
     envRect(surroundings,px+k,pz,.16,15,-.20,0x527c38);
    }
   }
-  // Place the northern farm road in the 5m gap between the z=-31 and z=-9 paddy rows.
-  // A 4.2m paved strip at z=-20 never overlaps their crop rectangles.
-  envRect(surroundings,50,-20,245,4.2,-.28,0x8b8e81);
-  envRect(surroundings,50,130,245,7,-.28,0x8b8e81);
   [[-30,-15],[-27,12],[-29,45],[-30,80],[-25,115],[118,-15],[117,12],[119,55],[118,90],[116,119],[-10,-28],[35,-28],[83,-28],[120,-27],[-10,121],[28,122],[84,122],[112,123]].forEach((p,i)=>envTree(surroundings,p[0],p[1],6+(i%3)*1.6,i%4===0?'round':'palm'));
   envBuilding(surroundings,-43,38,17,13,6,0xd6d0b5);
   envBuilding(surroundings,145,73,22,15,7,0xd4cfbb);
  }else{
   // Rural industrial edge: paved access road, low warehouses, staging yards, some trees.
-  envRect(surroundings,50,-20,245,12,-.27,0x666f72);
+  envRect(surroundings,50,-20,218,12,-.27,0x666f72);
   envRect(surroundings,119,50,12,225,-.27,0x626d70);
   envRect(surroundings,-33,72,18,75,-.26,0x999f9f);
   envRect(surroundings,141,72,47,66,-.26,0xa6a7a0);
@@ -210,7 +209,7 @@ function createSurroundings(kind){
   envBuilding(surroundings,149,39,27,24,11,0xc6c8b5);
   envBuilding(surroundings,147,105,35,19,8,0xbeb8ad);
   for(let i=0;i<4;i++){envRect(surroundings,125+i*5,75,2.8,9,-.17,i%2?0x9eaaac:0xb6aa95);}
-  [[-12,-20],[20,-20],[95,-20],[120,17],[120,104],[-20,107],[-23,45],[135,130],[80,131]].forEach((p,i)=>envTree(surroundings,p[0],p[1],6+i%3, i%3===0?'palm':'round'));
+  [[-12,-27],[20,-27],[95,-27],[120,17],[120,104],[-20,107],[-23,45],[135,137],[80,137]].forEach((p,i)=>envTree(surroundings,p[0],p[1],6+i%3, i%3===0?'palm':'round'));
  }
  // Entrance approach on the southern edge, without claiming an actual site-road design.
  envRect(surroundings,50,112,10,24,-.25,0x818889);
@@ -816,8 +815,8 @@ const sharedPatrolPoints=[
 const deliveryLaneX=98.4;
 const deliveryPoints=[[deliveryLaneX,-12],[deliveryLaneX,112],[126,112],[126,-12]];
 
-function roundedCircuit(points,radius){
- const corners=points.map(([x,z])=>new THREE.Vector3(x,.18,z));
+function roundedCircuit(points,radius,height=.18){
+ const corners=points.map(([x,z])=>new THREE.Vector3(x,height,z));
  const offsets=corners.map((corner,i)=>{
   const before=corners[(i+corners.length-1)%corners.length];
   const after=corners[(i+1)%corners.length];
@@ -911,6 +910,66 @@ for(const z of [6,40,62,86,97]){
  routeMarkings.add(arrow);
 }
 box(routeMarkings,deliveryLaneX,25,2.7,.25,.015,0xf1e9da,.094);
+// The north leg runs in the gap between paddy rows. The east leg clears
+// the industrial yards and the delivery-truck loop.
+const villageRoad=roundedCircuit([[-88,-20],[169,-20],[169,130],[-88,130]],10,-.18);
+const villageTraffic=new THREE.Group();
+trafficRoot.add(villageTraffic);
+const villagePaint=new THREE.MeshStandardMaterial({roughness:.56});
+const villageGlass=new THREE.MeshStandardMaterial({color:0x304654,roughness:.25});
+const villageRubber=new THREE.MeshStandardMaterial({color:0x20282b,roughness:.88});
+const villageHeadlamp=mat(0xe4edec);
+const villageTailLamp=mat(0xae302a);
+const vehicleBox=new THREE.BoxGeometry(1,1,1);
+const vehicleTire=new THREE.CylinderGeometry(.32,.32,.19,12);
+
+function buildVillageVehicle(kind,color){
+ const actor=new THREE.Group();
+ const paint=villagePaint.clone();
+ paint.color.setHex(color);
+ const van=kind==='van',pickup=kind==='pickup';
+ const width=van?2.05:1.84,length=van?5.3:4.55;
+ function part(w,h,l,x,y,z,material){
+  const mesh=new THREE.Mesh(vehicleBox,material);
+  mesh.scale.set(w,h,l);mesh.position.set(x,y,z);
+  mesh.castShadow=true;actor.add(mesh);
+ }
+ part(width,.56,length,0,.60,0,paint);
+ part(width*.88,van?1.15:.72,van?3.7:1.8,0,van?1.40:1.18,van?-.28:.26,paint);
+ part(width*.80,.43,.08,0,1.23,van?1.59:1.19,villageGlass);
+ for(const side of [-1,1]){
+  part(.06,.36,van?.85:1.28,side*width*.445,1.23,van?1.10:.32,villageGlass);
+  part(.28,.16,.07,side*width*.36,.72,length/2,villageHeadlamp);
+  part(.21,.15,.07,side*width*.39,.72,-length/2,villageTailLamp);
+  if(pickup)part(.10,.22,1.46,side*width*.46,.94,-1.42,paint);
+ }
+ if(pickup)part(width*.82,.05,1.36,0,.897,-1.42,villageRubber);
+ const wheels=[];
+ for(const x of [-width/2,width/2])for(const z of [-length*.32,length*.32]){
+  const wheel=new THREE.Mesh(vehicleTire,villageRubber);
+  wheel.rotation.z=Math.PI/2;wheel.position.set(x*.91,.32,z);
+  wheel.castShadow=true;actor.add(wheel);wheels.push(wheel);
+ }
+ villageTraffic.add(actor);
+ return {actor,wheels};
+}
+const villageVehicles=[
+ buildVillageVehicle('pickup',0x769980),
+ buildVillageVehicle('van',0xe5dfcf),
+ buildVillageVehicle('car',0x7794ac),
+ buildVillageVehicle('pickup',0xa26842)
+];
+function updateVillageTraffic(delta){
+ if(!villageTraffic.visible)return;
+ const speed=8;
+ // A common speed and evenly spaced phases prevent vehicles from catching up.
+ const length=villageRoad.getLength();
+ villageVehicles.forEach(({actor,wheels},i)=>{
+  placeOnRoute(villageRoad,trafficTime*speed+length*(i+.45)/villageVehicles.length,actor);
+  for(const wheel of wheels)wheel.rotateY(-speed*delta/.32);
+ });
+}
+
 const workerSpeeds=[1.14,1.25,1.08,1.15,1.22,1.12,1.2];
 const workerAnchors=workerSpeeds.map((_,i)=>{
  const g=new THREE.Group();g.name='patrol worker '+(i+1);
@@ -957,6 +1016,7 @@ buildSimpleTruck();
 simpleTruckAnchor.rotation.y=Math.PI;
 function syncTrafficVisibility(){
  trafficRoot.visible=trafficEnabled;
+ villageTraffic.visible=environmentMode!=='engineering';
  sharedWorkers.visible=trafficEnabled&&trafficAssetPreference&&workerReady;
  proceduralWorkers.visible=trafficEnabled&&!(trafficAssetPreference&&workerReady);
  demoTruckAnchor.visible=trafficEnabled&&trafficAssetPreference&&truckReady;
@@ -967,7 +1027,7 @@ function syncTrafficVisibility(){
  document.getElementById('traffic-simple').classList.toggle('active',!trafficAssetPreference);
  trafficStatus.textContent=!trafficEnabled?'人車動畫已隱藏。':
   '7 位巡檢人員與 1 輛卡車循環運行｜人物：'+(workerReady&&trafficAssetPreference?'GLB 骨架動畫':'輕量人形')+
-  '｜卡車：'+(truckReady&&trafficAssetPreference?'GrabCAD 垃圾收運車 GLB':'輕量運輸貨車')+'。';
+  '｜卡車：'+(truckReady&&trafficAssetPreference?'GrabCAD 垃圾收運車 GLB':'輕量運輸貨車')+ (villageTraffic.visible?'｜場外車輛 4 輛':'')+'。';
 }
 document.getElementById('traffic-on').onclick=()=>{trafficEnabled=true;syncTrafficVisibility()};
 document.getElementById('traffic-off').onclick=()=>{trafficEnabled=false;syncTrafficVisibility()};
@@ -1158,6 +1218,7 @@ function updateTraffic(delta){
   worker.leftArm.rotation.x=-stride;worker.rightArm.rotation.x=stride;
   if(trafficMixers[i])trafficMixers[i].timeScale=workerSpeeds[i]/1.2;
  }
+ updateVillageTraffic(delta);
  const delivery=deliveryMotion(trafficTime);
  placeOnRoute(deliveryRoute,delivery.distance,truckAnchor);
  for(const wheel of simpleTruckAnchor.userData.wheels)wheel.rotateY(-delivery.speed*delta/.58);
@@ -1253,7 +1314,8 @@ document.getElementById('areas').innerHTML=areas(mode).map(a=>'<tr><td>'+a[0]+'<
 update('dry');
 const environmentButtons={farm:document.getElementById('env-farm'),industrial:document.getElementById('env-industrial'),engineering:document.getElementById('env-engineering')};
 function chooseEnvironment(value){
- environmentMode=value;createSurroundings(value);
+ environmentMode=value;createSurroundings(value);syncTrafficVisibility();
+ updateVillageTraffic(0);
  Object.entries(environmentButtons).forEach(([key,button])=>button.classList.toggle('active',key===value));
 }
 Object.entries(environmentButtons).forEach(([key,button])=>button.onclick=()=>chooseEnvironment(key));
@@ -1473,11 +1535,11 @@ function exportImage(includeScene){
  const button=document.getElementById(includeScene?'scene-shot':'screenshot');
  const oldText=button.textContent;button.disabled=true;button.textContent='正在產生 PNG…';
  const oldBackground=scene.background,oldFog=scene.fog;
- const oldGround=ground.visible,oldGrid=grid.visible,oldBoundary=boundary.visible,oldSurroundings=surroundings.visible,oldRouteMarkings=routeMarkings.visible;
+ const oldGround=ground.visible,oldGrid=grid.visible,oldBoundary=boundary.visible,oldSurroundings=surroundings.visible,oldRouteMarkings=routeMarkings.visible,oldVillageTraffic=villageTraffic.visible;
  const originalWidth=stage.clientWidth,originalHeight=stage.clientHeight,originalAspect=camera.aspect;
  try {
   const width=Math.min(4096,Math.round(originalWidth*2)),height=Math.min(4096,Math.round(originalHeight*2));
-  if(!includeScene){scene.background=null;scene.fog=null;ground.visible=false;grid.visible=false;boundary.visible=false;surroundings.visible=false;routeMarkings.visible=false;}
+  if(!includeScene){scene.background=null;scene.fog=null;ground.visible=false;grid.visible=false;boundary.visible=false;surroundings.visible=false;routeMarkings.visible=false;villageTraffic.visible=false;}
   else {
    // Engineering mode still exports a normal colored view; other modes include their surroundings.
    grid.visible=false;
@@ -1490,7 +1552,7 @@ function exportImage(includeScene){
   a.href=png;document.body.appendChild(a);a.click();a.remove();
  }catch(error){console.error(error);alert('PNG 輸出失敗：'+error.message);}
  finally {
-  scene.background=oldBackground;scene.fog=oldFog;ground.visible=oldGround;grid.visible=oldGrid;boundary.visible=oldBoundary;surroundings.visible=oldSurroundings;routeMarkings.visible=oldRouteMarkings;
+  scene.background=oldBackground;scene.fog=oldFog;ground.visible=oldGround;grid.visible=oldGrid;boundary.visible=oldBoundary;surroundings.visible=oldSurroundings;routeMarkings.visible=oldRouteMarkings;villageTraffic.visible=oldVillageTraffic;
   camera.aspect=originalAspect;camera.updateProjectionMatrix();renderer.setSize(originalWidth,originalHeight,false);
   button.disabled=false;button.textContent=oldText;
  }
