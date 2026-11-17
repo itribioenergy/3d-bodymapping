@@ -41,8 +41,8 @@
 <div class="mode"><button id="traffic-on" class="active">啟用人車</button><button id="traffic-off">停止顯示</button></div>
 <div class="mode"><button id="traffic-assets" class="active">工作員 GLB 優先</button><button id="traffic-simple">輕量示意</button></div>
 <div style="margin-top:7px"><label style="font-size:12px;cursor:pointer"><input type="checkbox" id="traffic-heading-flip"> 人物面向反轉 180°（必要時校正）</label></div>
-<p class="note" id="traffic-status" role="status">7 位巡檢人員與 1 輛卡車沿預設路線循環移動；GLB 載入失敗時使用輕量模型。</p>
-<p class="note">垃圾車由北側進場，在前處理區停靠後由南側駛離。熱帶農田與鄉村工業區均顯示廠外雙向車流。</p>
+<p class="note" id="traffic-status" role="status">巡檢人員與進出場車輛沿預設路線移動；GLB 載入失敗時使用輕量模型。</p>
+<p class="note">每 18 秒安排一輛車進場，每兩輛垃圾車穿插一輛油罐車。車輛由北側進場，在前處理區停靠 5 秒後由南側駛離。熱帶農田與鄉村工業區均顯示廠外雙向車流。</p>
 <p class="note">垃圾車素材：<a href="https://grabcad.com/library/garbage-truck-2" target="_blank" rel="noopener noreferrer">GrabCAD — Garbage Truck 2</a>，原 STL 降面與基本配色重建；使用者已確認使用授權。</p>
 <p class="note">人物模型改用 Quaternius Worker（工地安全帽，CC0）；貨車採用使用者授權的 GrabCAD Garbage Truck 2 STL 輕量化 GLB（約 0.82 MB、4.1 萬三角面），車頭白色、垃圾車廂綠色；材質為近似重建。車道、停靠點及巡檢路線為概念示意，實際配置須核對車輛掃掠範圍與現場出入口。</p>
 <h3>周邊環境</h3>
@@ -796,9 +796,6 @@ const trafficStatus=document.getElementById('traffic-status');
 const trafficLoader=new GLTFLoader();trafficLoader.setMeshoptDecoder(MeshoptDecoder);
 const sharedWorkers=new THREE.Group(),proceduralWorkers=new THREE.Group();
 trafficRoot.add(sharedWorkers,proceduralWorkers);
-const truckAnchor=new THREE.Group();trafficRoot.add(truckAnchor);
-const demoTruckAnchor=new THREE.Group(),simpleTruckAnchor=new THREE.Group();
-truckAnchor.add(demoTruckAnchor,simpleTruckAnchor);
 let workerReady=false,truckReady=false;
 // Most Quaternius humanoids use +Z as their facing axis; the old Soldier faced -Z.
 let workerHeadingFlip=false;
@@ -863,13 +860,17 @@ addDeliveryLine(deliveryLaneX+deliveryTurn,deliveryExitZ,deliveryEndX,deliveryEx
 const deliveryLengths=deliveryRoute.getCurveLengths();
 const deliveryLength=deliveryRoute.getLength();
 const deliveryStopDistance=deliveryLengths[1]+25-(deliveryEntryZ+deliveryTurn);
-const deliverySpeed=6,deliveryRamp=2,deliveryDwell=5,deliveryAway=12;
+const deliverySpeed=6,deliveryRamp=2,deliveryDwell=5;
+const deliveryHeadway=18,firstDeliveryTurnTime=9;
+const deliveryPattern=['garbage','garbage','tanker'];
 const deliveryOuterSpeed=12;
 const deliveryInboundTime=deliveryLengths[0]/deliveryOuterSpeed;
 const deliveryOutboundTime=(deliveryLength-deliveryLengths[3])/deliveryOuterSpeed;
 const deliveryStopTime=(deliveryStopDistance-deliveryLengths[0])/deliverySpeed+deliveryRamp/2;
 const deliveryLeaveTime=(deliveryLengths[3]-deliveryStopDistance)/deliverySpeed+deliveryRamp/2;
 const deliveryTripTime=deliveryInboundTime+deliveryStopTime+deliveryDwell+deliveryLeaveTime+deliveryOutboundTime;
+const deliveryFleetSize=Math.ceil(deliveryTripTime/(deliveryHeadway*deliveryPattern.length))*deliveryPattern.length;
+const deliveryCycle=deliveryFleetSize*deliveryHeadway;
 const routePoint=new THREE.Vector3(),routeBack=new THREE.Vector3(),routeAhead=new THREE.Vector3();
 const routeFraction=(distance,length)=>((distance%length)+length)%length/length;
 function placeOnRoute(path,distance,actor){
@@ -880,8 +881,9 @@ function placeOnRoute(path,distance,actor){
  actor.position.copy(routePoint);
  actor.rotation.y=Math.atan2(routeAhead.x-routeBack.x,routeAhead.z-routeBack.z);
 }
-function deliveryMotion(time){
- let elapsed=(time+deliveryInboundTime-9)%(deliveryTripTime+deliveryAway);
+function deliveryMotion(time,slot){
+ const clock=time+deliveryInboundTime-firstDeliveryTurnTime-slot*deliveryHeadway;
+ let elapsed=((clock%deliveryCycle)+deliveryCycle)%deliveryCycle;
  if(elapsed>=deliveryTripTime)return null;
  if(elapsed<deliveryInboundTime)return {distance:elapsed*deliveryOuterSpeed,speed:deliveryOuterSpeed};
  elapsed-=deliveryInboundTime;
@@ -977,7 +979,7 @@ const shoulder=texturedMaterial(0x817e70,'asphalt',0,1);
 const roadPaint=new THREE.MeshStandardMaterial({
  color:0xdcd9ce,roughness:.85,polygonOffset:true,polygonOffsetFactor:-1,polygonOffsetUnits:-2
 });
-const villageRoadExtent=950;
+const villageRoadExtent=deliveryOuterSpeed*deliveryHeadway*9/2;
 const villageRoadLength=2*villageRoadExtent;
 const villageRoadLevel=-.18;
 const villagePavedWidth=6.4;
@@ -1089,14 +1091,23 @@ function buildVillageVehicle(kind,color){
  villageTraffic.add(actor);
  return {actor,wheels};
 }
+// Reserve a break in public traffic for each truck turn at the two junctions.
+const villageTrafficSpacing=deliveryOuterSpeed*deliveryHeadway/2;
+const junctionOffset=(junctionX,truckTime,direction)=>
+ villageRoadExtent+direction*(junctionX-50)+deliveryOuterSpeed*(3-truckTime);
+const firstDeliveryMergeTime=firstDeliveryTurnTime+deliveryStopTime+deliveryDwell+deliveryLeaveTime;
 const villageLanes=[
- {z:villageRoadRows[0]+1.6,direction:1,speed:10,phase:0,kind:'pickup',color:0x769980},
- {z:villageRoadRows[0]-1.6,direction:-1,speed:9,phase:.37,kind:'van',color:0xe5dfcf},
- {z:villageRoadRows[1]+1.6,direction:1,speed:11,phase:.71,kind:'car',color:0x7794ac},
- {z:villageRoadRows[1]-1.6,direction:-1,speed:9.5,phase:.16,kind:'pickup',color:0xa26842}
+ {z:deliveryEntryZ,direction:1,speed:deliveryOuterSpeed,offset:junctionOffset(deliveryLaneX-deliveryTurn,firstDeliveryTurnTime,1),count:villageRoadLength/villageTrafficSpacing,kind:'pickup',color:0x769980},
+ {z:villageRoadRows[0]-1.6,direction:-1,speed:deliveryOuterSpeed,offset:junctionOffset(deliveryLaneX-deliveryTurn,firstDeliveryTurnTime+1,-1),count:villageRoadLength/villageTrafficSpacing,kind:'van',color:0xe5dfcf},
+ {z:deliveryExitZ,direction:1,speed:deliveryOuterSpeed,offset:junctionOffset(deliveryLaneX+deliveryTurn,firstDeliveryMergeTime,1),count:villageRoadLength/villageTrafficSpacing,kind:'car',color:0x7794ac},
+ {z:villageRoadRows[1]-1.6,direction:-1,speed:deliveryOuterSpeed,offset:junctionOffset(deliveryLaneX,firstDeliveryMergeTime-1,-1),count:villageRoadLength/villageTrafficSpacing,kind:'pickup',color:0xa26842}
 ].map(lane=>{
- const vehicles=Array.from({length:7},()=>buildVillageVehicle(lane.kind,lane.color));
- for(const {actor} of vehicles)actor.rotation.y=lane.direction*Math.PI/2;
+ const vehicles=Array.from({length:lane.count},(_,index)=>{
+  const variation=[lane.color,0xcacbc5,0x596d77,0x9e8c78];
+  const vehicle=buildVillageVehicle(lane.kind,variation[index%variation.length]);
+  vehicle.actor.rotation.y=lane.direction*Math.PI/2;
+  return vehicle;
+ });
  return {...lane,vehicles};
 });
 const villageModels=[
@@ -1125,6 +1136,11 @@ function loadVillageModels(){
     vehicle.model=model.clone();
     vehicle.actor.add(vehicle.model);
    }
+   if(file==='tanker-truck'){
+    for(const truck of deliveryFleet.filter(truck=>truck.kind==='tanker')){
+     truck.model.add(model.clone());
+    }
+   }
    syncTrafficVisibility();
   },undefined,error=>console.warn('Vehicle model unavailable:',file,error));
  }
@@ -1133,11 +1149,11 @@ const villageViewDirection=new THREE.Vector3();
 function updateVillageTraffic(delta){
  if(!villageTraffic.visible)return;
  camera.getWorldDirection(villageViewDirection);
- for(const {z,direction,speed,phase,vehicles} of villageLanes){
+ for(const {z,direction,speed,offset,vehicles} of villageLanes){
   const spacing=villageRoadLength/vehicles.length;
-  const offset=trafficTime*speed+phase*spacing;
   vehicles.forEach(({actor,wheels},i)=>{
-   const distance=(offset+i*spacing)%villageRoadLength;
+   const travelled=trafficTime*speed+offset+i*spacing;
+   const distance=((travelled%villageRoadLength)+villageRoadLength)%villageRoadLength;
    const x=50+direction*(distance-villageRoadExtent);
    const depth=(x-camera.position.x)*villageViewDirection.x
     +(villageRoadLevel-camera.position.y)*villageViewDirection.y
@@ -1171,15 +1187,20 @@ const workerFallback=workerSpeeds.map((_,i)=>{
  proceduralWorkers.add(pivot);
  return {pivot,left,right,leftArm,rightArm};
 });
-function buildSimpleTruck(){
- const g=simpleTruckAnchor;
+function buildSimpleTruck(kind){
+ const g=new THREE.Group();
  const steel=new THREE.MeshStandardMaterial({color:0xe1e5e1,metalness:.19,roughness:.72});
  const cabin=new THREE.MeshStandardMaterial({color:0x6d8c7d,metalness:.25,roughness:.6});
  const dark=new THREE.MeshStandardMaterial({color:0x222e30,roughness:.92});
  const windowMat=new THREE.MeshStandardMaterial({color:0x314d60,metalness:.12,roughness:.45});
  function cub(w,h,d,x,y,z,m){const o=new THREE.Mesh(new THREE.BoxGeometry(w,h,d),m);o.position.set(x,y,z);o.castShadow=true;g.add(o);return o;}
  cub(2.6,.38,8.5,0,1.15,0,dark);
- cub(2.5,2.05,5.0,0,2.32,.9,steel);
+ if(kind==='tanker'){
+  const tank=new THREE.Mesh(new THREE.CapsuleGeometry(1.08,3.6,5,16),steel);
+  tank.rotation.x=Math.PI/2;tank.position.set(0,2.47,1.25);tank.castShadow=true;g.add(tank);
+ }else{
+  cub(2.5,2.05,5.0,0,2.32,.9,steel);
+ }
  cub(2.35,2.18,2.75,0,2.2,-2.4,cabin);
  cub(2.12,.83,.09,0,2.72,-3.82,windowMat);
  cub(2.58,.25,1.2,0,1.18,-3.65,dark);
@@ -1190,10 +1211,16 @@ function buildSimpleTruck(){
   const hub=new THREE.Mesh(new THREE.CylinderGeometry(.26,.26,.32,16),steel);
   hub.rotation.z=Math.PI/2;hub.position.copy(tire.position);g.add(hub);
  }
- g.userData.wheels=wheels;
+ g.rotation.y=Math.PI;
+ return {fallback:g,wheels};
 }
-buildSimpleTruck();
-simpleTruckAnchor.rotation.y=Math.PI;
+const deliveryFleet=Array.from({length:deliveryFleetSize},(_,slot)=>{
+ const kind=deliveryPattern[slot%deliveryPattern.length];
+ const actor=new THREE.Group(),model=new THREE.Group();
+ const {fallback,wheels}=buildSimpleTruck(kind);
+ actor.add(model,fallback);actor.visible=false;trafficRoot.add(actor);
+ return {kind,actor,model,fallback,wheels};
+});
 function syncTrafficVisibility(){
  trafficRoot.visible=trafficEnabled;
  villageTraffic.visible=environmentMode!=='engineering';
@@ -1204,14 +1231,16 @@ function syncTrafficVisibility(){
  }
  sharedWorkers.visible=trafficEnabled&&trafficAssetPreference&&workerReady;
  proceduralWorkers.visible=trafficEnabled&&!(trafficAssetPreference&&workerReady);
- demoTruckAnchor.visible=trafficEnabled&&trafficAssetPreference&&truckReady;
- simpleTruckAnchor.visible=trafficEnabled&&!(trafficAssetPreference&&truckReady);
+ for(const {model,fallback} of deliveryFleet){
+  model.visible=trafficAssetPreference&&model.children.length>0;
+  fallback.visible=!model.visible;
+ }
  document.getElementById('traffic-on').classList.toggle('active',trafficEnabled);
  document.getElementById('traffic-off').classList.toggle('active',!trafficEnabled);
  document.getElementById('traffic-assets').classList.toggle('active',trafficAssetPreference);
  document.getElementById('traffic-simple').classList.toggle('active',!trafficAssetPreference);
  trafficStatus.textContent=!trafficEnabled?'人車動畫已隱藏。':
-  '7 位巡檢人員與 1 輛垃圾車進出場｜人物：'+(workerReady&&trafficAssetPreference?'GLB 骨架動畫':'輕量人形')+
+  '7 位巡檢人員｜垃圾車與油罐車交替進場｜人物：'+(workerReady&&trafficAssetPreference?'GLB 骨架動畫':'輕量人形')+
   '｜卡車：'+(truckReady&&trafficAssetPreference?'GrabCAD 垃圾收運車 GLB':'輕量運輸貨車')+ (villageTraffic.visible?'｜鄉村道路雙向車流':'')+'。';
 }
 document.getElementById('traffic-on').onclick=()=>{trafficEnabled=true;syncTrafficVisibility()};
@@ -1382,7 +1411,8 @@ function loadTrafficAssets(){
    const scaled=new THREE.Box3().setFromObject(model),ctr=scaled.getCenter(new THREE.Vector3());
    model.position.x-=ctr.x;model.position.z-=ctr.z;model.position.y-=scaled.min.y;
    model.traverse(o=>{if(o.isMesh){o.castShadow=true;o.receiveShadow=true}});
-   demoTruckAnchor.add(model);truckReady=true;syncTrafficVisibility();
+   for(const truck of deliveryFleet.filter(truck=>truck.kind==='garbage'))truck.model.add(model.clone());
+   truckReady=true;syncTrafficVisibility();
   }catch(error){console.warn('Imported garbage truck setup failed; using procedural fallback',error);}
  },undefined,error=>console.warn('GrabCAD garbage truck GLB unavailable; using simple truck',error));
 }
@@ -1404,13 +1434,14 @@ function updateTraffic(delta){
   worker.leftArm.rotation.x=-stride;worker.rightArm.rotation.x=stride;
   if(trafficMixers[i])trafficMixers[i].timeScale=workerSpeeds[i]/1.2;
  }
- let delivery=deliveryMotion(trafficTime);
- truckAnchor.visible=Boolean(delivery);
- if(delivery){
-  placeDeliveryTruck(truckAnchor,delivery.distance);
-  if(environmentMode==='engineering')truckAnchor.visible=truckAnchor.position.z>=-4&&truckAnchor.position.z<=104;
- }else delivery={speed:0};
- for(const wheel of simpleTruckAnchor.userData.wheels)wheel.rotateY(-delivery.speed*delta/.58);
+ deliveryFleet.forEach(({actor,fallback,wheels},slot)=>{
+  const delivery=deliveryMotion(trafficTime,slot);
+  actor.visible=Boolean(delivery);
+  if(!delivery)return;
+  placeDeliveryTruck(actor,delivery.distance);
+  if(environmentMode==='engineering')actor.visible=actor.position.z>=-4&&actor.position.z<=104;
+  if(actor.visible&&fallback.visible)for(const wheel of wheels)wheel.rotateY(-delivery.speed*delta/.58);
+ });
  if(trafficAssetPreference&&workerReady)for(const mixer of trafficMixers)if(mixer)mixer.update(delta);
 }
 
