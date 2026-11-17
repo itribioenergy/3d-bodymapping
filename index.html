@@ -41,9 +41,8 @@
 <div class="mode"><button id="traffic-on" class="active">啟用人車</button><button id="traffic-off">停止顯示</button></div>
 <div class="mode"><button id="traffic-assets" class="active">工作員 GLB 優先</button><button id="traffic-simple">輕量示意</button></div>
 <div style="margin-top:7px"><label style="font-size:12px;cursor:pointer"><input type="checkbox" id="traffic-heading-flip"> 人物面向反轉 180°（必要時校正）</label></div>
-<div class="mode" style="margin-top:7px"><button id="traffic-routes" class="active" aria-pressed="true">顯示巡檢路線</button></div>
 <p class="note" id="traffic-status" role="status">7 位巡檢人員與 1 輛卡車沿預設路線循環移動；GLB 載入失敗時使用輕量模型。</p>
-<p class="note">垃圾車由北側進場，在前處理區停靠後由南側駛離。黃線為巡檢步行路線，會隨乾式／濕式配置切換。熱帶農田與鄉村工業區均顯示廠外雙向車流。</p>
+<p class="note">垃圾車由北側進場，在前處理區停靠後由南側駛離。熱帶農田與鄉村工業區均顯示廠外雙向車流。</p>
 <p class="note">垃圾車素材：<a href="https://grabcad.com/library/garbage-truck-2" target="_blank" rel="noopener noreferrer">GrabCAD — Garbage Truck 2</a>，原 STL 降面與基本配色重建；使用者已確認使用授權。</p>
 <p class="note">人物模型改用 Quaternius Worker（工地安全帽，CC0）；貨車採用使用者授權的 GrabCAD Garbage Truck 2 STL 輕量化 GLB（約 0.82 MB、4.1 萬三角面），車頭白色、垃圾車廂綠色；材質為近似重建。車道、停靠點及巡檢路線為概念示意，實際配置須核對車輛掃掠範圍與現場出入口。</p>
 <h3>周邊環境</h3>
@@ -68,7 +67,7 @@ import {GLTFLoader} from 'three/addons/loaders/GLTFLoader.js';
 import {clone as cloneSkinned} from 'three/addons/utils/SkeletonUtils.js';
 import {MeshoptDecoder} from 'three/addons/libs/meshopt_decoder.module.js';
 const stage=document.getElementById('stage');
-const colors={dry:0x2ba991,wet:0x43aadd,pretreat:0xf0ab5e,storage:0xd7b982,process:0x8dbe92,gas:0x66d3da,desulf:0xa9a0f2,gen:0xf3c66a,liquid:0x86a4e8,road:0x415e6b,walk:0xd5ab56};
+const colors={dry:0x2ba991,wet:0x43aadd,pretreat:0xf0ab5e,storage:0xd7b982,process:0x8dbe92,gas:0x66d3da,desulf:0xa9a0f2,gen:0xf3c66a,liquid:0x86a4e8,road:0x415e6b};
 const hex=n=>'#'+n.toString(16).padStart(6,'0');
 const scene=new THREE.Scene();scene.background=new THREE.Color(0x0b202b);scene.fog=new THREE.Fog(0x0b202b,170,340);
 const camera=new THREE.PerspectiveCamera(43,stage.clientWidth/stage.clientHeight,2,1000);camera.position.set(121,126,146);
@@ -913,16 +912,6 @@ function placeDeliveryTruck(actor,distance){
  actor.position.set(routePoint.x,deliveryHeight(routePoint.z),routePoint.z);
  actor.rotation.y=Math.atan2(routeAhead.x-routeBack.x,routeAhead.z-routeBack.z);
 }
-const routeMarkings=new THREE.Group();
-scene.add(routeMarkings);
-const patrolMarkings={dry:new THREE.Group(),wet:new THREE.Group()};
-routeMarkings.add(...Object.values(patrolMarkings));
-const routeButton=document.getElementById('traffic-routes');
-routeButton.onclick=()=>{
- routeMarkings.visible=!routeMarkings.visible;
- routeButton.classList.toggle('active',routeMarkings.visible);
- routeButton.setAttribute('aria-pressed',String(routeMarkings.visible));
-};
 function drawRoute(path,width,height,material,parent,start=0,end=path.getLength(),clipZ=null){
  const fraction=(distance)=>start===0&&end===path.getLength()?routeFraction(distance,end):THREE.MathUtils.clamp(distance/path.getLength(),0,1);
  const side=new THREE.Vector3();
@@ -988,7 +977,6 @@ const shoulder=texturedMaterial(0x817e70,'asphalt',0,1);
 const roadPaint=new THREE.MeshStandardMaterial({
  color:0xdcd9ce,roughness:.85,polygonOffset:true,polygonOffsetFactor:-1,polygonOffsetUnits:-2
 });
-const patrolPaint=mat(colors.walk);
 const villageRoadExtent=950;
 const villageRoadLength=2*villageRoadExtent;
 const villageRoadLevel=-.18;
@@ -1061,10 +1049,6 @@ for(const z of [7,42,64,85,96]){
 }
 addRoadPaint(plantRoad,plantStripes,plantArrows);
 
-for(const path of sharedPatrols)drawRoute(path,.65,.094,patrolPaint,routeMarkings);
-for(const [kind,paths] of Object.entries(patrolRoutes)){
- for(const path of paths.slice(0,patrolPoints[kind].length))drawRoute(path,.65,.094,patrolPaint,patrolMarkings[kind]);
-}
 const villageTraffic=new THREE.Group();
 trafficRoot.add(villageTraffic);
 const villagePaint=new THREE.MeshStandardMaterial({roughness:.56});
@@ -1513,7 +1497,7 @@ const areas=(mode)=>{
  items.push(['未劃設用地（含通行空間）',10000-used]);
  return items;
 };
-const legendItems=[['dry','乾式反應器'],['wet','攪拌槽'],['pretreat','前處理'],['storage','沼渣沼液暫存'],['process','沼渣沼液處理'],['gas','沼氣袋'],['desulf','脫硫'],['gen','發電機'],['liquid','預留檢修／沼液槽'],['road','收運車道'],['walk','巡檢步行路線']];
+const legendItems=[['dry','乾式反應器'],['wet','攪拌槽'],['pretreat','前處理'],['storage','沼渣沼液暫存'],['process','沼渣沼液處理'],['gas','沼氣袋'],['desulf','脫硫'],['gen','發電機'],['liquid','預留檢修／沼液槽'],['road','收運車道']];
 document.getElementById('legend').innerHTML=legendItems.map(a=>'<span class="sw" style="background:'+hex(colors[a[0]])+'"></span><span>'+a[1]+'</span>').join('');
 let mode='dry',labelsVisible=true,zonesVisible=true;
 let roadLabels=[],activeLabel=null,pendingLabelPoint=null,hoverPoint=null,touchStart=null;
@@ -1582,7 +1566,7 @@ labelCanvas.addEventListener('pointerup',e=>{
 });
 labelCanvas.addEventListener('pointercancel',()=>{touchStart=null;});
 ctl.addEventListener('change',()=>{if(hoverPoint)pendingLabelPoint=hoverPoint;});
-function update(next){mode=next;patrolMarkings.dry.visible=mode==='dry';patrolMarkings.wet.visible=mode==='wet';while(dynamic.children.length){dynamic.remove(dynamic.children[0])}zoneGroup.clear();equipmentGroup.clear();showEquipmentLabel(null);pendingLabelPoint=hoverPoint;labelsGroup.clear();pretreatmentOriginalGroup.clear();dynamic.add(zoneGroup,equipmentGroup,labelsGroup);makeCommon();updatePretreatmentDisplay();if(mode==='dry')addDry();else addWet();labelsGroup.visible=labelsVisible;zoneGroup.visible=zonesVisible;
+function update(next){mode=next;while(dynamic.children.length){dynamic.remove(dynamic.children[0])}zoneGroup.clear();equipmentGroup.clear();showEquipmentLabel(null);pendingLabelPoint=hoverPoint;labelsGroup.clear();pretreatmentOriginalGroup.clear();dynamic.add(zoneGroup,equipmentGroup,labelsGroup);makeCommon();updatePretreatmentDisplay();if(mode==='dry')addDry();else addWet();labelsGroup.visible=labelsVisible;zoneGroup.visible=zonesVisible;
 document.getElementById('dry').classList.toggle('active',mode==='dry');document.getElementById('wet').classList.toggle('active',mode==='wet');
 document.getElementById('m1title').textContent=mode==='dry'?'40 呎貨櫃':'攪拌槽';document.getElementById('m1').textContent=mode==='dry'?'40':'3';document.getElementById('m1unit').textContent=' 座';
 document.getElementById('m2').textContent=mode==='dry'?'2.90':'13.50';
@@ -1822,11 +1806,11 @@ function exportImage(includeScene){
  const button=document.getElementById(includeScene?'scene-shot':'screenshot');
  const oldText=button.textContent;button.disabled=true;button.textContent='正在產生 PNG…';
  const oldBackground=scene.background,oldFog=scene.fog;
- const oldGround=ground.visible,oldGrid=grid.visible,oldBoundary=boundary.visible,oldSurroundings=surroundings.visible,oldRouteMarkings=routeMarkings.visible,oldVillageTraffic=villageTraffic.visible,oldPlantRoad=plantRoad.visible,oldCountrysideRoads=countrysideRoads.visible;
+ const oldGround=ground.visible,oldGrid=grid.visible,oldBoundary=boundary.visible,oldSurroundings=surroundings.visible,oldVillageTraffic=villageTraffic.visible,oldPlantRoad=plantRoad.visible,oldCountrysideRoads=countrysideRoads.visible;
  const originalWidth=stage.clientWidth,originalHeight=stage.clientHeight,originalAspect=camera.aspect;
  try {
   const width=Math.min(4096,Math.round(originalWidth*2)),height=Math.min(4096,Math.round(originalHeight*2));
-  if(!includeScene){scene.background=null;scene.fog=null;ground.visible=false;grid.visible=false;boundary.visible=false;surroundings.visible=false;routeMarkings.visible=false;villageTraffic.visible=false;plantRoad.visible=false;countrysideRoads.visible=false;}
+  if(!includeScene){scene.background=null;scene.fog=null;ground.visible=false;grid.visible=false;boundary.visible=false;surroundings.visible=false;villageTraffic.visible=false;plantRoad.visible=false;countrysideRoads.visible=false;}
   else {
    // Engineering mode still exports a normal colored view; other modes include their surroundings.
    grid.visible=false;
@@ -1839,7 +1823,7 @@ function exportImage(includeScene){
   a.href=png;document.body.appendChild(a);a.click();a.remove();
  }catch(error){console.error(error);alert('PNG 輸出失敗：'+error.message);}
  finally {
-  scene.background=oldBackground;scene.fog=oldFog;ground.visible=oldGround;grid.visible=oldGrid;boundary.visible=oldBoundary;surroundings.visible=oldSurroundings;routeMarkings.visible=oldRouteMarkings;villageTraffic.visible=oldVillageTraffic;plantRoad.visible=oldPlantRoad;countrysideRoads.visible=oldCountrysideRoads;
+  scene.background=oldBackground;scene.fog=oldFog;ground.visible=oldGround;grid.visible=oldGrid;boundary.visible=oldBoundary;surroundings.visible=oldSurroundings;villageTraffic.visible=oldVillageTraffic;plantRoad.visible=oldPlantRoad;countrysideRoads.visible=oldCountrysideRoads;
   camera.aspect=originalAspect;camera.updateProjectionMatrix();renderer.setSize(originalWidth,originalHeight,false);
   button.disabled=false;button.textContent=oldText;
  }
