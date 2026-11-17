@@ -5,14 +5,14 @@
 <title>菲律賓 100 噸/日厭氧沼氣場｜1:1 量體配置比較</title>
 <style>
 :root{font-family:Inter,"Noto Sans TC","Microsoft JhengHei",system-ui,sans-serif;color:#e8f3f5;background:#081621}
-*{box-sizing:border-box}body{margin:0}button{font:inherit;cursor:pointer}#app{display:grid;grid-template-columns:minmax(0,1fr) 350px;height:100vh;min-height:650px}#stage{position:relative;overflow:hidden;background:radial-gradient(circle at 45% 35%,#173442,#07131c 75%)}canvas{display:block}.top{position:absolute;top:22px;left:24px;right:22px;pointer-events:none}.top h1{font-size:22px;line-height:1.32;margin:0 0 8px}.top p{margin:0;font-size:12px;color:#b2c8d0}.stamp{display:inline-block;background:#1b3942;border:1px solid #397c83;border-radius:20px;color:#91e5cc;font-size:10px;letter-spacing:1.3px;padding:6px 11px;margin-bottom:11px}.tools{pointer-events:auto;display:flex;gap:8px;flex-wrap:wrap;margin-top:20px}.tools button,.mode button{background:#142d39;color:#d9f4f4;border:1px solid #355566;border-radius:8px;padding:9px 12px;font-size:12px}.tools button:hover,.mode button:hover{background:#235369}.tools button.active,.mode button.active{background:#0b745e;border-color:#35c7a1;color:white}.scale{position:absolute;bottom:18px;left:24px;font-size:11px;color:#b7cbd2;background:#0c2229c9;padding:9px 12px;border-radius:8px}.side{background:#0d202c;border-left:1px solid #294653;padding:23px 20px;overflow:auto}.side h2{font-size:16px;margin:0 0 12px}.side h3{font-size:13px;margin:21px 0 9px;color:#c2e9e8}.mode{display:flex;gap:7px}.mode button{flex:1}.metricgrid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:16px 0}.metric{border:1px solid #294956;background:#112c37;padding:12px;border-radius:9px}.metric span{display:block;font-size:10px;color:#aac1ca;margin-bottom:7px}.metric b{font-size:19px}.metric small{font-size:10px;color:#acc7ca}p.note{font-size:11px;line-height:1.7;color:#a8bdc8;margin:9px 0}.legend{display:grid;grid-template-columns:13px 1fr;gap:9px 8px;font-size:11px;line-height:1.45;color:#d0e0e4}.sw{width:12px;height:12px;border-radius:3px;margin-top:2px}table{width:100%;border-collapse:collapse;font-size:11px}td,th{padding:8px 5px;border-bottom:1px solid #284454;text-align:right}td:first-child,th:first-child{text-align:left}th{color:#8eafb9;font-weight:500}.foot{margin-top:19px;border-top:1px solid #294452;padding-top:13px;font-size:10px;color:#91adb9;line-height:1.65}#tip{position:absolute;bottom:70px;left:24px;max-width:365px;font-size:11px;background:#0b202ce9;color:#dceced;padding:10px 13px;border:1px solid #355563;border-radius:8px;display:none}#error{position:absolute;top:48%;left:10%;right:10%;text-align:center;color:#ffe3cf;display:none}.label{font:600 11px/1.2 system-ui,sans-serif;color:#fff;text-shadow:0 1px 5px #09212a;background:#0b2a36b8;border:1px solid #6895a566;padding:4px 7px;border-radius:5px;white-space:nowrap;pointer-events:none}.bottomkey{position:absolute;right:18px;bottom:18px;font-size:10px;color:#8ba9b4}
+*{box-sizing:border-box}body{margin:0}button{font:inherit;cursor:pointer}#app{display:grid;grid-template-columns:minmax(0,1fr) 350px;height:100vh;min-height:650px}#stage{position:relative;overflow:hidden;background:radial-gradient(circle at 45% 35%,#173442,#07131c 75%)}canvas{display:block}.top{position:absolute;top:22px;left:24px;right:22px;pointer-events:none}.top h1{font-size:22px;line-height:1.32;margin:0 0 8px}.top p{margin:0;font-size:12px;color:#b2c8d0}.stamp{display:inline-block;background:#1b3942;border:1px solid #397c83;border-radius:20px;color:#91e5cc;font-size:10px;letter-spacing:1.3px;padding:6px 11px;margin-bottom:11px}.tools{pointer-events:auto;display:flex;gap:8px;flex-wrap:wrap;margin-top:20px}.tools button,.mode button{background:#142d39;color:#d9f4f4;border:1px solid #355566;border-radius:8px;padding:9px 12px;font-size:12px}.tools button:hover,.mode button:hover{background:#235369}.tools button.active,.mode button.active{background:#0b745e;border-color:#35c7a1;color:white}.scale{position:absolute;bottom:18px;left:24px;font-size:11px;color:#b7cbd2;background:#0c2229c9;padding:9px 12px;border-radius:8px}.side{background:#0d202c;border-left:1px solid #294653;padding:23px 20px;overflow:auto}.side h2{font-size:16px;margin:0 0 12px}.side h3{font-size:13px;margin:21px 0 9px;color:#c2e9e8}.mode{display:flex;gap:7px}.mode button{flex:1}.metricgrid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:16px 0}.metric{border:1px solid #294956;background:#112c37;padding:12px;border-radius:9px}.metric span{display:block;font-size:10px;color:#aac1ca;margin-bottom:7px}.metric b{font-size:19px}.metric small{font-size:10px;color:#acc7ca}p.note{font-size:11px;line-height:1.7;color:#a8bdc8;margin:9px 0}.legend{display:grid;grid-template-columns:13px 1fr;gap:9px 8px;font-size:11px;line-height:1.45;color:#d0e0e4}.sw{width:12px;height:12px;border-radius:3px;margin-top:2px}table{width:100%;border-collapse:collapse;font-size:11px}td,th{padding:8px 5px;border-bottom:1px solid #284454;text-align:right}td:first-child,th:first-child{text-align:left}th{color:#8eafb9;font-weight:500}.foot{margin-top:19px;border-top:1px solid #294452;padding-top:13px;font-size:10px;color:#91adb9;line-height:1.65}#tip{position:absolute;bottom:70px;left:24px;max-width:365px;font-size:11px;background:#0b202ce9;color:#dceced;padding:10px 13px;border:1px solid #355563;border-radius:8px;display:none}#error{position:absolute;top:48%;left:10%;right:10%;text-align:center;color:#ffe3cf;display:none}.label{font:600 11px/1.2 system-ui,sans-serif;color:#fff;text-shadow:0 1px 5px #09212a;background:#0b2a36b8;border:1px solid #6895a566;padding:4px 7px;border-radius:5px;max-width:min(270px,65vw);width:max-content;text-align:center;pointer-events:none}.bottomkey{position:absolute;right:18px;bottom:18px;font-size:10px;color:#8ba9b4}
 @media(max-width:920px){#app{grid-template-columns:1fr;height:auto}#stage{height:65vh;min-height:470px}.side{height:auto}.top{left:15px;top:14px}.top h1{font-size:17px}.tools{margin-top:11px}.tools button{padding:7px 9px}}
 </style>
 <script type="importmap">{"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.169.0/build/three.module.js","three/addons/":"https://cdn.jsdelivr.net/npm/three@0.169.0/examples/jsm/"}}</script>
 </head>
 <body><div id="app"><main id="stage">
 <div class="top"><div class="stamp">CONCEPT DESIGN · TRUE-SCALE MASSING</div><h1>菲律賓厭氧沼氣場｜100 噸／日<br>1 公頃基地 · 兩方案 3D 量體比較</h1><p>物件採公尺座標 1:1 建模 · 基地 100 × 100 m · 高度與形狀為概念設計</p>
-<div class="tools"><button id="orbit" class="active">立體視角</button><button id="plan">俯視平面</button><button id="reset">重設視角</button><button id="labels" class="active">顯示標籤</button><button id="zones" class="active">顯示預留區</button><button id="screenshot" title="下載目前視角的透明背景圖片">📷 下載透明 PNG</button><button id="scene-shot" title="下載包含場景與天空的 PNG">🌄 下載場景 PNG</button></div></div>
+<div class="tools"><button id="orbit" class="active">立體視角</button><button id="plan">俯視平面</button><button id="reset">重設視角</button><button id="labels" class="active" aria-pressed="true" title="滑鼠指向設備或在觸控螢幕點一下">指向顯示標籤</button><button id="zones" class="active">顯示預留區</button><button id="screenshot" title="下載目前視角的透明背景圖片">📷 下載透明 PNG</button><button id="scene-shot" title="下載包含場景與天空的 PNG">🌄 下載場景 PNG</button></div></div>
 <div id="tip"></div><div class="scale">操作：左鍵旋轉 · 滾輪縮放 · 右鍵平移<br>基地範圍 100 × 100 m｜所有主設備以真實公尺尺寸建模</div><div class="bottomkey">N ↑　概念配置，非施工圖</div><div id="error">3D 函式庫載入失敗。請確認網路連線，並透過本機 HTTP 伺服器或 GitHub Pages 開啟。</div>
 </main><aside class="side">
 <h2>厭氧設備形式</h2><div class="mode"><button id="dry" class="active">A · 乾式貨櫃型</button><button id="wet">B · 攪拌槽型</button></div>
@@ -312,7 +312,15 @@ const box=(parent,x,z,w,d,h,c,y=0)=>{const finish=(h>.3 && parent===equipmentGro
  let o=new THREE.Mesh(new THREE.BoxGeometry(w,h,d),finish);o.position.set(x,y+h/2,z);o.castShadow=h>0.3;o.receiveShadow=true;parent.add(o);return o};
 const cylinder=(parent,x,z,r,h,c)=>{let o=new THREE.Mesh(new THREE.CylinderGeometry(r,r,h,48),texturedMaterial(c,'steel',.22,.62));o.position.set(x,h/2,z);o.castShadow=true;o.receiveShadow=true;parent.add(o);return o};
 const sphere=(parent,x,z,r,c,y=r)=>{const o=new THREE.Mesh(new THREE.SphereGeometry(r,36,22),mat(c,0.83));o.position.set(x,y,z);o.castShadow=true;parent.add(o);return o};
-const label=(txt,x,z,y)=>{let el=document.createElement('div');el.className='label';el.textContent=txt;let o=new CSS2DObject(el);o.position.set(x,y,z);labelsGroup.add(o);return o};
+const label=(txt,x,z,y,firstPart=equipmentGroup.children.length)=>{
+ const el=document.createElement('div');
+ el.className='label';el.textContent=txt;
+ const tag=new CSS2DObject(el);
+ tag.position.set(x,y,z);tag.visible=false;
+ labelsGroup.add(tag);
+ for(const part of equipmentGroup.children.slice(firstPart))part.userData.equipmentLabel=tag;
+ return tag;
+};
 const zone=(name,x,z,w,d,c)=>{let a=box(zoneGroup,x,z,w,d,0.09,c,0.02);a.material.transparent=true;a.material.opacity=.18;let e=new THREE.LineSegments(new THREE.EdgesGeometry(new THREE.BoxGeometry(w,0.12,d)),new THREE.LineBasicMaterial({color:c,transparent:true,opacity:.75}));e.position.set(x,.09,z);zoneGroup.add(e);return a};
 // Unified plan coordinates: X left-to-right, Z top-to-bottom (metres).
 const commonZones=[
@@ -511,6 +519,7 @@ function buildGeneratorContainer(x,z){
 }
 
 function tank(x,z,r,h,c,labelText){
+  const firstPart=equipmentGroup.children.length;
   slab(x,z,r*2+1.4,r*2+1.4);
   cylinder(equipmentGroup,x,z,r,h,c);
   for(let i=0;i<16;i++){let theta=2*Math.PI*i/16;let px=x+r*Math.cos(theta),pz=z+r*Math.sin(theta);beam(px,.4,pz,px,h-.35,pz,.035,0x6f8776)}
@@ -524,7 +533,7 @@ function tank(x,z,r,h,c,labelText){
   const lx=x+r+.5;beam(lx,.3,z-.42,lx,h,z-.42,.045,0xc4cdd1);
   beam(lx,.3,z+.42,lx,h,z+.42,.045,0xc4cdd1);
   for(let yy=.5;yy<h;yy+=.45)beam(lx,yy,z-.42,lx,yy,z+.42,.029,0xc4cdd1);
-  label(labelText,x,z,h+3.1);
+  label(labelText,x,z,h+3.1,firstPart);
 }
 function shed(x,z,w,d,h,c){
  slab(x,z,w+.5,d+.5);
@@ -549,6 +558,7 @@ function gasHolder(x,z){
 }
 
 function industrialDesulfurizationSkid(x,z){
+ const firstPart=equipmentGroup.children.length;
  // Reference-inspired three-column adsorber skid: concept geometry only.
  // Occupies approximately 17 x 11 m within the existing 20 x 14 m service zone.
  const frame=0xa2afb2, shell=0xd4d7ce, piping=0x87999c, rail=0xb8c8c9;
@@ -601,7 +611,7 @@ function industrialDesulfurizationSkid(x,z){
  beam(lx,.35,ladderZ+.4,lx,13.1,ladderZ+.4,.043,rail);
  for(let yy=.55;yy<13;yy+=.42)beam(lx,yy,ladderZ-.4,lx,yy,ladderZ+.4,.027,rail);
  box(equipmentGroup,x+7.2,z+3.0,1.3,.72,2.0,0x697f86,.16);
- label('三塔式模組脫硫系統（參考外觀）',x,z,17);
+ label('三塔式模組脫硫系統（參考外觀）',x,z,17,firstPart);
 }
 
 
@@ -1421,6 +1431,7 @@ function updateTraffic(delta){
 }
 
 
+let pretreatmentLabel;
 const makeCommon=()=>{
  commonZones.forEach(a=>zone(a[0],a[1],a[2],a[3],a[4],colors[a[5]]));
  // Top-right: outdoor-facing loading at east, then westward shredding / transfer / mixing toward digesters.
@@ -1440,33 +1451,39 @@ const makeCommon=()=>{
  for(const x of [79.6,82.4,86.1,89.0])box(equipmentGroup,x,21.5,.14,1.45,.92,0x8da1a4,.16);
  equipmentGroup.children.slice(firstGeneric).forEach(mesh=>{equipmentGroup.remove(mesh);pretreatmentOriginalGroup.add(mesh);});
  equipmentGroup.add(pretreatmentOriginalGroup);
- label('前處理：外側進料 → 雙軸破碎 → 輸送 → 內側混拌',84,21.5,9);
+ pretreatmentLabel=label('前處理：外側進料 → 雙軸破碎 → 輸送 → 內側混拌',84,21.5,9,0);
  // Middle-right: photo-reference polyethylene tanks and inclined stainless separator.
+ const separatorStart=equipmentGroup.children.length;
  shed(84,51.5,25,17,8.2,0x81999e);
  referencePlasticDigestateTank(76,51,2.2,5.4);
  referencePlasticDigestateTank(82,51,2.2,5.4);
  referenceSlantedSeparator(91,51.5);
- label('固液分離／沼渣沼液處理',84,51.5,11);
+ label('固液分離／沼渣沼液處理',84,51.5,11,separatorStart);
  // Lower-right: solid and liquid digestate temporary storage.
+ const storageStart=equipmentGroup.children.length;
  shed(78,81.5,12,14,5.2,0x80979a);
  for(let i=0;i<3;i++)box(equipmentGroup,75+i*2.6,81.5,2.3,7,1.05,0x9d9374);
  cylinder(equipmentGroup,91,81.5,3.1,4.5,0x788b80);
  torus(91,4.5,81.5,3.12,0xc5d4d1);
- label('沼渣堆置／沼液暫存',84,81.5,7.3);
+ label('沼渣堆置／沼液暫存',84,81.5,7.3,storageStart);
  // Lower-left: generator / desulfurization skid / independent double membrane gas holders.
+ const generatorStart=equipmentGroup.children.length;
  buildGeneratorContainer(13,81.5);
  box(equipmentGroup,18.0,81.5,2.4,2.7,2.8,0x8d9da0);
- label('550 kW 貨櫃發電機',13,81.5,6);
+ label('550 kW 貨櫃發電機',13,81.5,6,generatorStart);
  industrialDesulfurizationSkid(31,81.5);
- gasHolder(55,75);gasHolder(55,89);
- label('脫硫前儲氣',55,75,9.1);
- label('脫硫後儲氣',55,89,9.1);
+ for(const [z,name] of [[75,'脫硫前儲氣'],[89,'脫硫後儲氣']]){
+  const firstPart=equipmentGroup.children.length;
+  gasHolder(55,z);
+  label(name,55,z,9.1,firstPart);
+ }
  beam(55,.9,68.5,55,2.1,67.5,.16,0x92bbbc);
  beam(55,.9,82.5,55,2.1,83,.16,0x92bbbc);
- // Unallocated spaces remain between allocation blocks for access and setbacks.
- label('收運車入口',96,3,2);
- label('前處理停靠點',98,25,4);
- label('收運車出口',96,96,2);
+ roadLabels=[
+  label('收運車入口',96,3,2),
+  label('前處理停靠點',98,25,4),
+  label('收運車出口',96,96,2)
+ ];
 };
 const dryRows=Array.from({length:10},(_,i)=>12.5+i*4.1);
 const addDry=()=>{
@@ -1474,17 +1491,19 @@ const addDry=()=>{
  const dryColumns=[14,29,44,59];
  const dryPositions=[];
  for(let j=0;j<10;j++)for(let i=0;i<4;i++)dryPositions.push([dryColumns[i],dryRows[j]]);
+ const firstPart=equipmentGroup.children.length;
  buildInstancedDigesters(dryPositions);
- label('乾式厭氧：40 × 40 呎貨櫃（4 欄 × 10 列）',37,10,6);
+ const tag=label('乾式厭氧：40 × 40 呎貨櫃（4 欄 × 10 列）',37,10,6,firstPart);
+ tag.userData.positions=dryPositions;
  tank(19,58,4,7,0x7d9f97,'沼液緩衝槽 Ø8 m（暫估）');
 };
 const addWet=()=>{
  zone('攪拌型反應器預留',37,26,62,38,colors.wet);
- zone('預留擴充／檢修空間',37,56.5,62,17,colors.liquid);
+ const reservedZone=zone('預留擴充／檢修空間',37,56.5,62,17,colors.liquid);
  [[19,26],[39,26],[59,26]].forEach((p,i)=>tank(p[0],p[1],5,13.5,0x315e48,'攪拌型厭氧槽 '+(i+1)+' Ø10 × H13.5 m'));
  beam(19,2,36,39,2,36,.24,0x86aaa0);
  beam(39,2,36,59,2,36,.24,0x86aaa0);
- label('預留擴充／檢修',37,56.5,3);
+ reservedZone.userData.equipmentLabel=label('預留擴充／檢修',37,56.5,3);
 };
 const areas=(mode)=>{
  let items=commonZones.map(a=>[a[0],a[6]]);
@@ -1497,7 +1516,73 @@ const areas=(mode)=>{
 const legendItems=[['dry','乾式反應器'],['wet','攪拌槽'],['pretreat','前處理'],['storage','沼渣沼液暫存'],['process','沼渣沼液處理'],['gas','沼氣袋'],['desulf','脫硫'],['gen','發電機'],['liquid','預留檢修／沼液槽'],['road','收運車道'],['walk','巡檢步行路線']];
 document.getElementById('legend').innerHTML=legendItems.map(a=>'<span class="sw" style="background:'+hex(colors[a[0]])+'"></span><span>'+a[1]+'</span>').join('');
 let mode='dry',labelsVisible=true,zonesVisible=true;
-function update(next){mode=next;patrolMarkings.dry.visible=mode==='dry';patrolMarkings.wet.visible=mode==='wet';while(dynamic.children.length){dynamic.remove(dynamic.children[0])}zoneGroup.clear();equipmentGroup.clear();labelsGroup.clear();pretreatmentOriginalGroup.clear();dynamic.add(zoneGroup,equipmentGroup,labelsGroup);makeCommon();updatePretreatmentDisplay();if(mode==='dry')addDry();else addWet();labelsGroup.visible=labelsVisible;zoneGroup.visible=zonesVisible;
+let roadLabels=[],activeLabel=null,pendingLabelPoint=null,hoverPoint=null,touchStart=null;
+const labelRay=new THREE.Raycaster(),labelPointer=new THREE.Vector2();
+function showEquipmentLabel(tag){
+ if(activeLabel===tag)return;
+ if(activeLabel)activeLabel.visible=false;
+ activeLabel=tag;
+ if(tag)tag.visible=true;
+}
+function pickEquipmentLabel(point){
+ const rect=renderer.domElement.getBoundingClientRect();
+ labelPointer.set((point.x-rect.left)/rect.width*2-1,1-(point.y-rect.top)/rect.height*2);
+ labelRay.setFromCamera(labelPointer,camera);
+ const meshes=[];
+ for(const root of [equipmentGroup,simreadyGroup,zoneGroup,plantRoad]){
+  root.traverseVisible(object=>{
+   if(object.isMesh&&(!object.isInstancedMesh||/^dry-containers:(shell|roof) /.test(object.name)))meshes.push(object);
+  });
+ }
+ const hit=labelRay.intersectObjects(meshes,false)[0];
+ if(!hit)return null;
+ for(let part=hit.object;part;part=part.parent){
+  const tag=part.userData.equipmentLabel;
+  if(tag){
+   const anchor=tag.userData.positions?.[hit.instanceId];
+   if(anchor)tag.position.set(anchor[0],6,anchor[1]);
+   return tag;
+  }
+  if(part.parent===simreadyGroup&&part.userData.area==='pretreat')return pretreatmentLabel;
+  if(part===plantRoad){
+   const index=[3,25,96].findIndex(z=>Math.abs(hit.point.z-z)<4);
+   return roadLabels[index]??null;
+  }
+ }
+ return null;
+}
+const labelCanvas=renderer.domElement;
+const pointerPoint=e=>({x:e.clientX,y:e.clientY});
+labelCanvas.addEventListener('pointermove',e=>{
+ if(e.pointerType==='touch'){
+  if(touchStart&&Math.hypot(e.clientX-touchStart.x,e.clientY-touchStart.y)>8)touchStart=null;
+  return;
+ }
+ hoverPoint=e.buttons?null:pointerPoint(e);
+ pendingLabelPoint=hoverPoint;
+ if(!hoverPoint)showEquipmentLabel(null);
+});
+labelCanvas.addEventListener('pointerleave',()=>{
+ if(!hoverPoint)return;
+ hoverPoint=pendingLabelPoint=null;
+ showEquipmentLabel(null);
+});
+labelCanvas.addEventListener('pointerdown',e=>{
+ showEquipmentLabel(null);
+ hoverPoint=pendingLabelPoint=null;
+ touchStart=e.pointerType==='touch'&&e.isPrimary?pointerPoint(e):null;
+});
+labelCanvas.addEventListener('pointerup',e=>{
+ if(e.pointerType==='touch'){
+  if(touchStart&&Math.hypot(e.clientX-touchStart.x,e.clientY-touchStart.y)<=8)pendingLabelPoint=pointerPoint(e);
+ }else{
+  hoverPoint=pendingLabelPoint=pointerPoint(e);
+ }
+ touchStart=null;
+});
+labelCanvas.addEventListener('pointercancel',()=>{touchStart=null;});
+ctl.addEventListener('change',()=>{if(hoverPoint)pendingLabelPoint=hoverPoint;});
+function update(next){mode=next;patrolMarkings.dry.visible=mode==='dry';patrolMarkings.wet.visible=mode==='wet';while(dynamic.children.length){dynamic.remove(dynamic.children[0])}zoneGroup.clear();equipmentGroup.clear();showEquipmentLabel(null);pendingLabelPoint=hoverPoint;labelsGroup.clear();pretreatmentOriginalGroup.clear();dynamic.add(zoneGroup,equipmentGroup,labelsGroup);makeCommon();updatePretreatmentDisplay();if(mode==='dry')addDry();else addWet();labelsGroup.visible=labelsVisible;zoneGroup.visible=zonesVisible;
 document.getElementById('dry').classList.toggle('active',mode==='dry');document.getElementById('wet').classList.toggle('active',mode==='wet');
 document.getElementById('m1title').textContent=mode==='dry'?'40 呎貨櫃':'攪拌槽';document.getElementById('m1').textContent=mode==='dry'?'40':'3';document.getElementById('m1unit').textContent=' 座';
 document.getElementById('m2').textContent=mode==='dry'?'2.90':'13.50';
@@ -1722,7 +1807,14 @@ renderer.domElement.addEventListener('pointerdown',()=>{if(tourRunning&&!recordi
 document.getElementById('reset').onclick=()=>{if(tourRunning)pauseTour();home();document.getElementById('orbit').classList.add('active');document.getElementById('plan').classList.remove('active')};
 document.getElementById('plan').onclick=()=>{if(tourRunning)pauseTour();camera.position.set(50.01,180,50);ctl.target.set(50,0,50);ctl.update();document.getElementById('plan').classList.add('active');document.getElementById('orbit').classList.remove('active')};
 document.getElementById('orbit').onclick=()=>{if(tourRunning)pauseTour();home();document.getElementById('orbit').classList.add('active');document.getElementById('plan').classList.remove('active')};
-document.getElementById('labels').onclick=()=>{labelsVisible=!labelsVisible;labelsGroup.visible=labelsVisible;document.getElementById('labels').classList.toggle('active',labelsVisible)};
+const labelsButton=document.getElementById('labels');
+labelsButton.onclick=()=>{
+ labelsVisible=!labelsVisible;
+ labelsGroup.visible=labelsVisible;
+ labelsButton.classList.toggle('active',labelsVisible);
+ labelsButton.setAttribute('aria-pressed',String(labelsVisible));
+ if(!labelsVisible)showEquipmentLabel(null);
+};
 document.getElementById('zones').onclick=()=>{zonesVisible=!zonesVisible;zoneGroup.visible=zonesVisible;document.getElementById('zones').classList.toggle('active',zonesVisible)};
 
 
@@ -1771,7 +1863,14 @@ function render(now){
   if(Math.floor(now/250)!==Math.floor((now-16)/250)&&tourRunning)refreshTourUI();
  }
  ctl.update();if(trafficEnabled)updateVillageTraffic(trafficDelta);
- renderer.render(scene,camera);labelRenderer.render(scene,camera);
+ renderer.render(scene,camera);
+ if(tourRunning){
+  showEquipmentLabel(null);
+ }else if(labelsVisible&&pendingLabelPoint){
+  showEquipmentLabel(pickEquipmentLabel(pendingLabelPoint));
+ }
+ pendingLabelPoint=null;
+ labelRenderer.render(scene,camera);
 }
 requestAnimationFrame(render);
 </script></body></html>
